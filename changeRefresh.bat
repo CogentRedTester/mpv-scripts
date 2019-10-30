@@ -1,1 +1,1 @@
-powershell "C:\Users\Oscar\OneDrive\mpv\scripts\changeRefresh.ps1" %1
+powershell ".\changeRefresh.ps1" %1
