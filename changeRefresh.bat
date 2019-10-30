@@ -1,1 +1,1 @@
-powershell ".\changeRefresh.ps1" %1
+powershell "%~dp0\changeRefresh.ps1" %1
