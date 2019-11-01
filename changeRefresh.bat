@@ -1,1 +1,0 @@
-powershell "%~dp0\changeRefresh.ps1" %1
