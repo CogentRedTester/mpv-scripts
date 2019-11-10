@@ -16,10 +16,10 @@ monitorProperties = {
 }
 
 --calls nircmd to change the display resolution and rate
-function change(monitor, width, height, rate)
+function changeRefresh(monitor, width, height, rate)
     mp.set_property("pause", "yes")
     local time = mp.get_time()
-    print("changing " .. monitor .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
+    print("changing monitor " .. monitor .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
     utils.subprocess({
         ["cancellable"] = false,
         ["args"] = {
@@ -33,7 +33,7 @@ function change(monitor, width, height, rate)
         }
     })
 
-    --waits 3 seconds then unpauses the videoPropertie
+    --waits 3 seconds then unpauses the video
     --prevents AV desyncs
     while (mp.get_time() - time < 3)
     do
@@ -50,7 +50,15 @@ end
 
 --records the original monitor properties
 function recordMonitorProperties()
-    monitorProperties.name = mp.get_property('display-names')
+    --when passed display names nircmd seems to apply the command across all displays instead of just one
+    --so to get around this the name must be converted into an integer
+    --the names are in the form \\.\DISPLAY# starting from 1, while the integers start from 0
+    local name = mp.get_property('display-names')
+    name = string.sub(name, -1)
+    name = tonumber(name)
+    name = name - 1
+
+    monitorProperties.name = tostring(name)
     monitorProperties.rate = mp.get_property_number('display-fps')
 end
 
@@ -59,14 +67,14 @@ function modifyVideoProperties()
     --Floor is used because 23fps video has an actual frate of ~23.9
     videoProperties.rate = math.floor(videoProperties.rate)
 
-    --high monitor tv framerates seem to vary between being above or below, so proper rounding is used
+    --high monitor tv framerates seem to vary between being just above or below the official number so proper rounding is used
     if (monitorProperties.rate % 1 >= 0.5) then
         monitorProperties.rate = math.ceil(monitorProperties.rate)
     else
         monitorProperties.rate = math.floor(monitorProperties.rate)
     end
 
-    --sets the monitor to 2160p if an UHD video is player, otherwise set to 1080p
+    --sets the monitor to 2160p if an UHD video is played, otherwise set to 1080p
     if (videoProperties.height < 1440) then
         videoProperties.height = 1080
         videoProperties.width = 1920
@@ -78,15 +86,17 @@ end
 
 --reverts the monitor to its original refresh rate
 function revertRefresh()
-    change(monitorProperties.name, monitorProperties.width, monitorProperties.height, tostring(monitorProperties.rate))
-    monitorProperties.beenReverted = true
+    if (monitorProperties.beenReverted == false) then
+        changeRefresh(monitorProperties.name, monitorProperties.width, monitorProperties.height, tostring(monitorProperties.rate))
+        monitorProperties.beenReverted = true
+    end
 end
 
 --executes commands to switch monior to video refreshrate
 function matchVideo()
     --if the change is executed on a different monitor to the previous, and the previous monitor has not been been reverted
     --then revert the previous changes before changing the new monitor
-    if ((monitorProperties.beenReverted == false) and (monitorProperties.name == mp.get_property('display-names'))) then
+    if ((monitorProperties.beenReverted == false) and (monitorProperties.name ~= mp.get_property('display-names'))) then
         revertRefresh()
     end
 
@@ -96,11 +106,11 @@ function matchVideo()
 
     modifyVideoProperties()
 
-    change(monitorProperties.name, tostring(videoProperties.width), tostring(videoProperties.height), tostring(videoProperties.rate))
+    changeRefresh(monitorProperties.name, tostring(videoProperties.width), tostring(videoProperties.height), tostring(videoProperties.rate))
     monitorProperties.beenReverted = false
 end
 
---key tries to change current display to match video fps
+--key tries to changeRefresh current display to match video fps
 mp.add_key_binding('f10', matchVideo)
 
 --key reverts monitor to original refreshrate
