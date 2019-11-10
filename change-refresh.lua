@@ -87,6 +87,9 @@ end
 --calls nircmd to change the display resolution and rate
 function changeRefresh(width, height, rate)
     local monitor = monitorProperties.number
+    msg.log('v', 'calling nircmd with command: ' .. options.nircmd)
+    msg.log('v', 'changing display: ' .. monitorProperties.name)
+    msg.log('v', 'current refresh = ' .. mp.get_property('display-fps'))
 
     msg.log('info', "changing monitor " .. monitor .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
     mp.set_property("pause", "yes")
@@ -117,8 +120,10 @@ end
 
 --records the properties of the currently playing video
 function recordVideoProperties()
-    videoProperties.width = mp.get_property_number('width')
-    videoProperties.height = mp.get_property_number('height')
+    videoProperties.width = mp.get_property_number('dwidth')
+    msg.log('v', "video width = " .. videoProperties.width)
+    videoProperties.height = mp.get_property_number('dheight')
+    msg.log('v', "video height = " .. videoProperties.height)
 
     if (options.estimated_fps == true) then
         videoProperties.rate = mp.get_property_number('estimated-vf-fps')
@@ -133,17 +138,27 @@ function recordMonitorProperties()
     --so to get around this the name must be converted into an integer
     --the names are in the form \\.\DISPLAY# starting from 1, while the integers start from 0
     local name = mp.get_property('display-names')
+    msg.log('v', 'display list: ' .. name)
+    name1 = name:find(',')
+    msg.log('v', 'found comma in display list at pos ' .. tostring(name1) .. ', will use the first display')
+    if (name1 == nil) then
+        name = name
+    else
+        name = string.sub(name, 0, name1 - 1)
+    end
+    msg.log('v', 'display name = ' .. name)
     monitorProperties.name = name
+    local number = string.sub(name, -1)
+    number = tonumber(number)
+    number = number - 1
 
-    name = string.sub(name, -1)
-    name = tonumber(name)
-    name = name - 1
-
-    monitorProperties.number = name
+    monitorProperties.number = number
+    msg.log('v', 'display number = ' .. number)
 
     --if beenReverted=true, then the current rate is the original rate of the monitor
     if (monitorProperties.beenReverted == true) then
         monitorProperties.originalRate = mp.get_property_number('display-fps')
+        msg.log('v', 'saving original fps: ' .. monitorProperties.originalRate)
     end
 end
 
@@ -152,8 +167,10 @@ function modifyVideoProperties()
     --Floor is used because 23fps video has an actual frate of ~23.9
     videoProperties.rate = math.floor(videoProperties.rate)
 
-    --high monitor tv framerates seem to vary between being just above or below the official number so proper rounding is used
-    monitorProperties.originalRate = round(monitorProperties.originalRate)
+    --high display framerates seem to vary between being just above or below the official number so proper rounding is used for the original rate
+    if (monitorProperties.beenReverted == true) then
+        monitorProperties.originalRate = round(monitorProperties.originalRate)
+    end
 
     if (options.UHD_adaptive ~= true) then
         videoProperties.height = monitorProperties.height
@@ -203,7 +220,7 @@ function matchVideo()
     end
 
     --saves the current refreshrate of the monitor
-    local currentRate = round(mp.get_property_number('display-fps'))
+    local currentRate = math.floor(mp.get_property_number('display-fps'))
 
     --records the current monitor prperties and video properties
     recordMonitorProperties()
