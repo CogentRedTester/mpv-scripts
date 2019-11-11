@@ -38,7 +38,7 @@ local options = {
     --options are reloaded upon keypress so profiles can be used to change this
     custom_width = "",
     custom_height = "",
-    custom_refresh = "",
+    custom_refresh = 0,
     custom_refresh_key = "",
 
     --keys to change and revert the monitor
@@ -55,21 +55,17 @@ local options = {
 read_options(options, "changerefresh")
 
 
-videoProperties = {
-    ["height"] = "",
-    ["width"] = "",
-    ["rate"] = "",
-    ["estimated"] = options.estimated_fps
-}
-
-monitorProperties = {
+display = {
     ["name"] = "",
     ["number"] = "0",
-    ["width"] = options.default_width,
-    ["height"] = options.default_height,
+    ["default_width"] = options.default_width,
+    ["default_height"] = options.default_height,
     ["bdepth"] = "32",
     ["originalRate"] = "60",
-    ["rate"] = "60",
+    ["new_rate"] = "",
+    ["new_width"] = "",
+    ["new_height"] = "",
+    ['estimated_fps'] = options.estimated_fps,
     ["beenReverted"] = true,
     ["usingCustom"] = false,
 }
@@ -86,9 +82,17 @@ end
 
 --calls nircmd to change the display resolution and rate
 function changeRefresh(width, height, rate)
-    local monitor = monitorProperties.number
+    --saves the current refreshrate of the monitor
+    local currentRateFloor = math.floor(mp.get_property_number('display-fps'))
+    local currentRateCeil = math.ceil(mp.get_property_number('display-fps'))
+    if ((currentRateFloor == rate) or (currentRateCeil == rate and currentRateCeil == display.originalRate)) then
+        msg.log('v', "display already at target refresh rate, terminating call to nircmd")
+        return
+    end
+
+    local monitor = display.number
     msg.log('v', 'calling nircmd with command: ' .. options.nircmd)
-    msg.log('v', 'changing display: ' .. monitorProperties.name)
+    msg.log('v', 'changing display: ' .. display.name)
     msg.log('v', 'current refresh = ' .. mp.get_property('display-fps'))
 
     msg.log('info', "changing monitor " .. monitor .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
@@ -102,7 +106,7 @@ function changeRefresh(width, height, rate)
             [3] = "monitor:" .. tostring(monitor),
             [4] = tostring(width),
             [5] = tostring(height),
-            [6] = "32",
+            [6] = display.bdepth,
             [7] = tostring(rate)
         }
     })
@@ -113,22 +117,22 @@ function changeRefresh(width, height, rate)
         mp.commandv("show-text", "changing monitor " .. monitor .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
     end
     
-    monitorProperties.beenReverted = false
-    monitorProperties.usingCustom = false
+    display.beenReverted = false
+    display.usingCustom = false
     mp.set_property("pause", "no")
 end
 
 --records the properties of the currently playing video
 function recordVideoProperties()
-    videoProperties.width = mp.get_property_number('dwidth')
-    msg.log('v', "video width = " .. videoProperties.width)
-    videoProperties.height = mp.get_property_number('dheight')
-    msg.log('v', "video height = " .. videoProperties.height)
+    display.new_width = mp.get_property_number('dwidth')
+    msg.log('v', "video width = " .. display.new_width)
+    display.new_height = mp.get_property_number('dheight')
+    msg.log('v', "video height = " .. display.new_height)
 
-    if (options.estimated_fps == true) then
-        videoProperties.rate = mp.get_property_number('estimated-vf-fps')
+    if (display.estimated_fps == true) then
+        display.new_rate = mp.get_property_number('estimated-vf-fps')
     else
-        videoProperties.rate = mp.get_property_number('container-fps')
+        display.new_rate = mp.get_property_number('container-fps')
     end
 end
 
@@ -147,63 +151,65 @@ function recordMonitorProperties()
         name = string.sub(name, 0, name1 - 1)
     end
     msg.log('v', 'display name = ' .. name)
-    monitorProperties.name = name
+    display.name = name
     local number = string.sub(name, -1)
     number = tonumber(number)
     number = number - 1
 
-    monitorProperties.number = number
+    display.number = number
     msg.log('v', 'display number = ' .. number)
 
     --if beenReverted=true, then the current rate is the original rate of the monitor
-    if (monitorProperties.beenReverted == true) then
-        monitorProperties.originalRate = mp.get_property_number('display-fps')
-        msg.log('v', 'saving original fps: ' .. monitorProperties.originalRate)
+    if (display.beenReverted == true) then
+        display.originalRate = mp.get_property_number('display-fps')
+        msg.log('v', 'saving original fps: ' .. display.originalRate)
+    end
+end
+
+function modifyDisplay()
+    --high display framerates seem to vary between being just above or below the official number so proper rounding is used for the original rate
+    if (display.beenReverted == true) then
+        display.originalRate = round(display.originalRate)
     end
 end
 
 --modifies the properties of the video to work with nircmd
 function modifyVideoProperties()
     --Floor is used because 23fps video has an actual frate of ~23.9
-    videoProperties.rate = math.floor(videoProperties.rate)
-
-    --high display framerates seem to vary between being just above or below the official number so proper rounding is used for the original rate
-    if (monitorProperties.beenReverted == true) then
-        monitorProperties.originalRate = round(monitorProperties.originalRate)
-    end
+    display.new_rate = math.floor(display.new_rate)
 
     if (options.UHD_adaptive ~= true) then
-        videoProperties.height = monitorProperties.height
-        videoProperties.width = monitorProperties.width
+        display.new_height = display.default_height
+        display.new_width = display.default_width
         return
     end
 
     --sets the monitor to 2160p if an UHD video is played, otherwise set to the default
-    if (videoProperties.height < 1440) then
-        videoProperties.height = monitorProperties.height
-        videoProperties.width = monitorProperties.width
+    if (display.new_height < 1440) then
+        display.new_height = display.default_height
+        display.new_width = display.default_width
     else
-        videoProperties.height = 2160
-        videoProperties.width = 3840
+        display.new_height = 2160
+        display.new_width = 3840
     end
 end
 
 --reverts the monitor to its original refresh rate
 function revertRefresh()
-    if (monitorProperties.beenReverted == false) then
-        changeRefresh(monitorProperties.width, monitorProperties.height, monitorProperties.originalRate)
-        monitorProperties.beenReverted = true
+    if (display.beenReverted == false) then
+        changeRefresh(display.default_width, display.default_height, display.originalRate)
+        display.beenReverted = true
     end
 end
 
 --toggles between using estimated and specified fps
 function toggleFpsType()
-    if (videoProperties.estimated_fps == true) then
-        videoProperties.estimated_fps = false
+    if (display.estimated_fps == true) then
+        display.estimated_fps = false
         mp.commandv("show-text", "Change-Refresh now using container fps")
         msg.log('info', "now using container fps")
     else
-        videoProperties.estimated_fps = true
+        display.estimated_fps = true
         mp.commandv("show-text", "Change-Refresh now using estimated fps")
         msg.log('info', "now using estimated fps")
     end
@@ -215,50 +221,49 @@ function matchVideo()
 
     --if the change is executed on a different monitor to the previous, and the previous monitor has not been been reverted
     --then revert the previous changes before changing the new monitor
-    if ((monitorProperties.beenReverted == false) and (monitorProperties.name ~= mp.get_property('display-names'))) then
+    if ((display.beenReverted == false) and (display.name ~= mp.get_property('display-names'))) then
         revertRefresh()
     end
-
-    --saves the current refreshrate of the monitor
-    local currentRate = math.floor(mp.get_property_number('display-fps'))
 
     --records the current monitor prperties and video properties
     recordMonitorProperties()
     recordVideoProperties()
-
     modifyVideoProperties()
+    modifyDisplay()
 
-    --if the new refresh rate of the monitor is not the same as the current refresh rate, then execute the change command
-    if (videoProperties.rate ~= currentRate) then
-        changeRefresh(videoProperties.width, videoProperties.height, videoProperties.rate)
-    end
+    changeRefresh(display.new_width, display.new_height, display.new_rate)
 end
 
 --Changes the monitor to use a preset custom refreshrate
 function customRefresh()
     read_options(options, "changerefresh")
+
+    if (display.beenReverted) then
+        recordMonitorProperties()
+        modifyDisplay()
+    end
     changeRefresh(options.custom_width, options.custom_height, options.custom_refresh)
-    monitorProperties.usingCustom = true
+    display.usingCustom = true
 end
 
 --sets the current (intended not actual) resoluting and refresh as the default to use upon reversion
 function setDefault()
-    if (monitorProperties.usingCustom) then
-        monitorProperties.width = options.custom_width
-        monitorProperties.height = options.custom_height
-        monitorProperties.originalRate = options.custom_refresh
+    if (display.usingCustom) then
+        display.default_width = options.custom_width
+        display.default_height = options.custom_height
+        display.originalRate = options.custom_refresh
     else
-        monitorProperties.width = videoProperties.width
-        monitorProperties.height = videoProperties.height
-        monitorProperties.originalRate = videoProperties.rate
+        display.default_width = display.new_width
+        display.default_height = display.new_height
+        display.originalRate = display.new_rate
     end
 
-    monitorProperties.beenReverted = true
-    monitorProperties.usingCustom = false
+    display.beenReverted = true
+    display.usingCustom = false
 
     --logging chage to OSD & the console
-    msg.log('info', 'set ' .. monitorProperties.width .. "x" .. monitorProperties.height .. " " .. monitorProperties.originalRate .. "Hz as defaut display rate")
-    mp.commandv('show-text', 'Change-Refresh: set ' .. monitorProperties.width .. "x" .. monitorProperties.height .. " " .. monitorProperties.originalRate .. "Hz as defaut display rate")
+    msg.log('info', 'set ' .. display.default_width .. "x" .. display.default_height .. " " .. display.originalRate .. "Hz as defaut display rate")
+    mp.commandv('show-text', 'Change-Refresh: set ' .. display.default_width .. "x" .. display.default_height .. " " .. display.originalRate .. "Hz as defaut display rate")
 end
 
 --key tries to changeRefresh current display to match video fps
@@ -270,8 +275,10 @@ mp.add_key_binding(options.revert_refresh_key, "revert_refresh_rate", revertRefr
 --ket to switch between using estimated and specified fps property
 mp.add_key_binding(options.toggle_fps_key, "toggle_fps_type", toggleFpsType)
 
+--key to activate custom refresh rate
 mp.add_key_binding(options.custom_refresh_key, "custom_refresh_rate", customRefresh)
 
+--key to set the current resolution and refresh rate as the default
 mp.add_key_binding(options.set_default_key, "set_default_refresh_rate", setDefault)
 
 --reverts refresh on mpv shutdown
