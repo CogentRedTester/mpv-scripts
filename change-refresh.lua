@@ -262,17 +262,17 @@ function setDefault()
 end
 
 --key tries to changeRefresh current display to match video fps
-mp.add_key_binding(options.change_refresh_key, matchVideo)
+mp.add_key_binding(options.change_refresh_key, "change_refresh_rate", matchVideo)
 
 --key reverts monitor to original refreshrate
-mp.add_key_binding(options.revert_refresh_key, revertRefresh)
+mp.add_key_binding(options.revert_refresh_key, "revert_refresh_rate", revertRefresh)
 
 --ket to switch between using estimated and specified fps property
-mp.add_key_binding(options.toggle_fps_key, toggleFpsType)
+mp.add_key_binding(options.toggle_fps_key, "toggle_fps_type", toggleFpsType)
 
-mp.add_key_binding(options.custom_refresh_key, customRefresh)
+mp.add_key_binding(options.custom_refresh_key, "custom_refresh_rate", customRefresh)
 
-mp.add_key_binding(options.set_default_key, setDefault)
+mp.add_key_binding(options.set_default_key, "set_default_refresh_rate", setDefault)
 
 --reverts refresh on mpv shutdown
 mp.register_event("shutdown", revertRefresh)
