@@ -96,7 +96,10 @@ function changeRefresh(width, height, rate)
     msg.log('v', 'current refresh = ' .. mp.get_property('display-fps'))
 
     msg.log('info', "changing monitor " .. monitor .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
+
+    local isPaused = mp.get_property_bool("pause")
     mp.set_property("pause", "yes")
+    
     local time = mp.get_time()
     utils.subprocess({
         ["cancellable"] = false,
@@ -119,7 +122,11 @@ function changeRefresh(width, height, rate)
     
     display.beenReverted = false
     display.usingCustom = false
-    mp.set_property("pause", "no")
+
+    --only unpauses if the video was not already paused
+    if (isPaused == false) then
+        mp.set_property("pause", "no")
+    end
 end
 
 --records the properties of the currently playing video
