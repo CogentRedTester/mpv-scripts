@@ -1,9 +1,9 @@
---[[]
+--[[
 This script uses nircmd to change the refresh rate of the display that the mpv window is currently open in
 This was written because I could not get autospeedwin to work :(
 
 If the display does not support the specified resolution or refresh rate it will silently fail, this script
-is designed to be used with televisions that support the full range of media refresh rates (23, 24, 29, 30, 59, 60)
+is designed to be used with televisions that support the full range of media refresh rates (23, 24, 25, 29, 30, 59, 60, etc)
 
 The script will keep track of the original refresh rate of the monitor and revert when either the
 correct keybind is pressed, or when mpv exits.
