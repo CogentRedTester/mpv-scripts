@@ -89,11 +89,6 @@ end
 function changeRefresh(width, height, rate)
     --saves the current refreshrate of the monitor
     local currentRateFloor = math.floor(mp.get_property_number('display-fps'))
-
-    if (currentRateFloor == rate) then
-        msg.log('v', "display already at target refresh rate, terminating call to nircmd")
-        return
-    end
  
     for validRates in string.gmatch(options.rates, "[%w.]+") do
         validRates = tonumber(validRates)
@@ -130,7 +125,7 @@ function changeRefresh(width, height, rate)
     })
     --waits 3 seconds then unpauses the video
     --prevents AV desyncs
-    while (mp.get_time() - time < 3)
+    while (mp.get_time() - time < 3 and mp.get_property_bool("eof-reached") == false)
     do
         mp.commandv("show-text", "changing monitor " .. monitor .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
     end
@@ -147,9 +142,8 @@ end
 --records the properties of the currently playing video
 function recordVideoProperties()
     display.new_width = mp.get_property_number('dwidth')
-    msg.log('v', "video width = " .. display.new_width)
     display.new_height = mp.get_property_number('dheight')
-    msg.log('v', "video height = " .. display.new_height)
+    msg.log('v', "video resolution = " .. display.new_width .. "x" .. display.new_height)
 
     if (display.estimated_fps == true) then
         display.new_rate = mp.get_property_number('estimated-vf-fps')
@@ -166,10 +160,10 @@ function recordMonitorProperties()
     local name = mp.get_property('display-names')
     msg.log('v', 'display list: ' .. name)
     name1 = name:find(',')
-    msg.log('v', 'found comma in display list at pos ' .. tostring(name1) .. ', will use the first display')
     if (name1 == nil) then
         name = name
     else
+        msg.log('v', 'found comma in display list at pos ' .. tostring(name1) .. ', will use the first display')
         name = string.sub(name, 0, name1 - 1)
     end
     msg.log('v', 'display name = ' .. name)
@@ -200,25 +194,35 @@ function modifyVideoProperties()
     --Floor is used because 23fps video has an actual frate of ~23.9
     display.new_rate = math.floor(display.new_rate)
 
+    display.new_width, display.new_height = width_height_modifier(display.new_width, display.new_height)
+end
+
+function width_height_modifier(width, height)
+
     if (options.UHD_adaptive ~= true) then
-        display.new_height = display.default_height
-        display.new_width = display.default_width
+        height = display.default_height
+        width = display.default_width
         return
     end
 
     --sets the monitor to 2160p if an UHD video is played, otherwise set to the default
-    if (display.new_height < 1440) then
-        display.new_height = display.default_height
-        display.new_width = display.default_width
+    if (height < 1440) then
+        height = display.default_height
+        width = display.default_width
     else
-        display.new_height = 2160
-        display.new_width = 3840
+        height = 2160
+        width = 3840
     end
+    msg.log('v', "setting display to: " .. width .. "x" .. height)
+
+    return width, height
 end
 
 --reverts the monitor to its original refresh rate
 function revertRefresh()
     if (display.beenReverted == false) then
+        msg.log('v', "reverting refresh rate")
+
         changeRefresh(display.default_width, display.default_height, display.originalRate)
         display.beenReverted = true
     end
