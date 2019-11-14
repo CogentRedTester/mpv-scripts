@@ -21,6 +21,7 @@ require 'mp.options'
 local options = {
     --the location of nircmd.exe, tries to use the %Path% by default
     nircmd = "nircmd",
+    rates = "23;24;30;60",
 
     --set whether to use the estimated fps or the container fps
     --see https://mpv.io/manual/master/#command-interface-container-fps for details
@@ -84,10 +85,20 @@ end
 function changeRefresh(width, height, rate)
     --saves the current refreshrate of the monitor
     local currentRateFloor = math.floor(mp.get_property_number('display-fps'))
-    local currentRateCeil = math.ceil(mp.get_property_number('display-fps'))
-    if ((currentRateFloor == rate) or (currentRateCeil == rate and currentRateCeil == display.originalRate)) then
+
+    if (currentRateFloor == rate) then
         msg.log('v', "display already at target refresh rate, terminating call to nircmd")
         return
+    end
+ 
+    for validRates in string.gmatch(options.rates, "[%w.]+") do
+        validRates = tonumber(validRates)
+        if (rate == validRates) then
+            break
+        elseif (validRates > rate) then
+            rate = validRates
+            break
+        end
     end
 
     local monitor = display.number
@@ -176,7 +187,7 @@ end
 function modifyDisplay()
     --high display framerates seem to vary between being just above or below the official number so proper rounding is used for the original rate
     if (display.beenReverted == true) then
-        display.originalRate = round(display.originalRate)
+        display.originalRate = math.floor(display.originalRate)
     end
 end
 
