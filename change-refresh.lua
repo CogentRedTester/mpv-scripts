@@ -2,8 +2,10 @@
 This script uses nircmd to change the refresh rate of the display that the mpv window is currently open in
 This was written because I could not get autospeedwin to work :(
 
-If the display does not support the specified resolution or refresh rate it will silently fail, this script
-is designed to be used with televisions that support the full range of media refresh rates (23, 24, 25, 29, 30, 59, 60, etc)
+If the display does not support the specified resolution or refresh rate it will silently fail
+If the video refresh rate does not match any on the whitelist it will pick the next highest
+
+This script is idealy used with televisions that support the full range of media refresh rates (23, 24, 25, 29, 30, 59, 60, etc)
 
 The script will keep track of the original refresh rate of the monitor and revert when either the
 correct keybind is pressed, or when mpv exits.
@@ -21,7 +23,9 @@ require 'mp.options'
 local options = {
     --the location of nircmd.exe, tries to use the %Path% by default
     nircmd = "nircmd",
-    rates = "23;24;30;60",
+
+    --list of valid refresh rates, separated by semicolon
+    rates = "60",
 
     --set whether to use the estimated fps or the container fps
     --see https://mpv.io/manual/master/#command-interface-container-fps for details
