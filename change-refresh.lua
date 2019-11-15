@@ -3,7 +3,8 @@ This script uses nircmd to change the refresh rate of the display that the mpv w
 This was written because I could not get autospeedwin to work :(
 
 If the display does not support the specified resolution or refresh rate it will silently fail
-If the video refresh rate does not match any on the whitelist it will pick the next highest
+If the video refresh rate does not match any on the whitelist it will pick the next highest.
+If the video fps is higher tha any on the whitelist it will pick the highest available
 
 This script is idealy used with televisions that support the full range of media refresh rates (23, 24, 25, 29, 30, 59, 60, etc)
 
@@ -24,8 +25,10 @@ local options = {
     --the location of nircmd.exe, tries to use the %Path% by default
     nircmd = "nircmd",
 
-    --list of valid refresh rates, separated by semicolon
-    rates = "60",
+    --list of valid refresh rates, separated by semicolon, listed in ascending order
+    --this whitelist also applies when attempting to revert the display, so include that rate in the list
+    --nircmd only seems to work with integers, DO NOT use the full refresh rate, i.e. 23.976
+    rates = "23;24;25;29;30;50;59;60",
 
     --set whether to use the estimated fps or the container fps
     --see https://mpv.io/manual/master/#command-interface-container-fps for details
@@ -40,13 +43,14 @@ local options = {
     UHD_adaptive = false,
 
     --a custom display option which can be set via keybind (useful if a tv likes defaulting to 2160p 30Hz for example)
-    --options are reloaded upon keypress so profiles can be used to change this
+    --options are reloaded upon keypress so profiles can be used to change these values
     custom_width = "",
     custom_height = "",
     custom_refresh = 0,
     custom_refresh_key = "",
 
     --keys to change and revert the monitor
+    --all keys are configurable via script-binding in input.conf, see bottom of script for the names
     change_refresh_key = "f10",
     revert_refresh_key = "Ctrl+f10",
 
@@ -54,6 +58,7 @@ local options = {
     toggle_fps_key = "",
 
     --sets the resolution and refresh rate of the currently modified monitor to be the default
+    --useful in conjunction with custom rate settings
     set_default_key = "",
 }
 
@@ -61,18 +66,18 @@ read_options(options, "changerefresh")
 
 
 display = {
-    ["name"] = "",
-    ["number"] = "0",
-    ["default_width"] = options.default_width,
-    ["default_height"] = options.default_height,
-    ["bdepth"] = "32",
-    ["originalRate"] = "60",
-    ["new_rate"] = "",
-    ["new_width"] = "",
-    ["new_height"] = "",
-    ['estimated_fps'] = options.estimated_fps,
-    ["beenReverted"] = true,
-    ["usingCustom"] = false,
+    name = "",
+    number = "0",
+    default_width = options.default_width,
+    default_height = options.default_height,
+    bdepth = "32",
+    originalRate = "60",
+    new_rate = "",
+    new_width = "",
+    new_height = "",
+    estimated_fps = options.estimated_fps,
+    beenReverted = true,
+    usingCustom = false,
 }
 
 function round(value)
@@ -87,18 +92,16 @@ end
 
 --calls nircmd to change the display resolution and rate
 function changeRefresh(width, height, rate)
-    --saves the current refreshrate of the monitor
-    local currentRateFloor = math.floor(mp.get_property_number('display-fps'))
+    local closestRate
  
     for validRates in string.gmatch(options.rates, "[%w.]+") do
         validRates = tonumber(validRates)
-        if (rate == validRates) then
-            break
-        elseif (validRates > rate) then
-            rate = validRates
+        closestRate = validRates
+        if (rate <= validRates) then
             break
         end
     end
+    rate = closestRate
 
     local monitor = display.number
     msg.log('v', 'calling nircmd with command: ' .. options.nircmd)
