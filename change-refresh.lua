@@ -13,6 +13,9 @@ correct keybind is pressed, or when mpv exits.
 
 The script is currently hardcoded to set a resolution of 1920x1080p for videos with a height of < 1440 pixels,
 and 3840x2160p for any height larger
+
+you can also send refresh change commands using script messages:
+script-message set-display-rate [width] [height] [rate]
 --]]
 
 
@@ -41,13 +44,6 @@ local options = {
     --if true, sets the monitor to 2160p when the resolution of the video is greater than 1440p
     --if less the monitor will be set to the default shown above
     UHD_adaptive = false,
-
-    --a custom display option which can be set via keybind (useful if a tv likes defaulting to 2160p 30Hz for example)
-    --options are reloaded upon keypress so profiles can be used to change these values
-    custom_width = "",
-    custom_height = "",
-    custom_refresh = 0,
-    custom_refresh_key = "",
 
     --keys to change and revert the monitor
     --all keys are configurable via script-binding in input.conf, see bottom of script for the names
@@ -93,7 +89,8 @@ end
 --calls nircmd to change the display resolution and rate
 function changeRefresh(width, height, rate)
     local closestRate
- 
+    rate = tonumber(rate)
+
     for validRates in string.gmatch(options.rates, "[%w.]+") do
         validRates = tonumber(validRates)
         closestRate = validRates
@@ -309,6 +306,8 @@ mp.add_key_binding(options.custom_refresh_key, "custom_refresh_rate", customRefr
 
 --key to set the current resolution and refresh rate as the default
 mp.add_key_binding(options.set_default_key, "set_default_refresh_rate", setDefault)
+
+mp.register_script_message("set-display-rate", changeRefresh)
 
 --reverts refresh on mpv shutdown
 mp.register_event("shutdown", revertRefresh)
