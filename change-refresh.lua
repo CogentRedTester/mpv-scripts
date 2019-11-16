@@ -37,10 +37,6 @@ local options = {
     --see https://mpv.io/manual/master/#command-interface-container-fps for details
     estimated_fps = false,
 
-    --default width and height to use when reverting the refresh rate
-    default_width = 1920,
-    default_height = 1080,
-
     --if true, sets the monitor to 2160p when the resolution of the video is greater than 1440p
     --if less the monitor will be set to the default shown above
     UHD_adaptive = false,
@@ -57,21 +53,22 @@ local options = {
     --useful in conjunction with custom rate settings
     set_default_key = "",
 }
-
-read_options(options, "changerefresh")
-
+function updateOptions()
+    msg.log('v', 'updating options')
+    read_options(options, "changerefresh")
+end
+updateOptions()
 
 display = {
     name = "",
     number = "0",
-    default_width = options.default_width,
-    default_height = options.default_height,
+    original_width = options.original_width,
+    original_height = options.original_height,
     bdepth = "32",
-    originalRate = "60",
-    new_rate = "",
+    original_fps = "60",
+    new_fps = "",
     new_width = "",
     new_height = "",
-    estimated_fps = options.estimated_fps,
     beenReverted = true,
     usingCustom = false,
 }
@@ -131,7 +128,6 @@ function changeRefresh(width, height, rate)
     end
     
     display.beenReverted = false
-    display.usingCustom = false
 
     --only unpauses if the video was not already paused
     if (isPaused == false) then
@@ -145,11 +141,28 @@ function recordVideoProperties()
     display.new_height = mp.get_property_number('dheight')
     msg.log('v', "video resolution = " .. display.new_width .. "x" .. display.new_height)
 
-    if (display.estimated_fps == true) then
-        display.new_rate = mp.get_property_number('estimated-vf-fps')
+    if (options.estimated_fps == true) then
+        display.new_fps = mp.get_property_number('estimated-vf-fps')
     else
-        display.new_rate = mp.get_property_number('container-fps')
+        display.new_fps = mp.get_property_number('container-fps')
     end
+end
+
+--finds the display resolution by going into fullscreen and grabbing the resolution of the OSD
+function getDisplayResolution()
+    local isFullscreen = mp.get_property_bool('fullscreen')
+
+    if isFullscreen == false then
+        mp.set_property('fullscreen', 'yes')
+    end
+    local width = mp.get_property("osd-width")
+    local height = mp.get_property("osd-height")
+
+    if isFullscreen == false then
+        mp.set_property("fullscreen", 'no')
+    end
+
+    return width, height
 end
 
 --records the original monitor properties
@@ -177,38 +190,40 @@ function recordMonitorProperties()
 
     --if beenReverted=true, then the current rate is the original rate of the monitor
     if (display.beenReverted == true) then
-        display.originalRate = mp.get_property_number('display-fps')
-        msg.log('v', 'saving original fps: ' .. display.originalRate)
+        display.original_width, display.original_height = getDisplayResolution()
+
+        display.original_fps = mp.get_property_number('display-fps')
+        msg.log('v', 'saving original fps: ' .. display.original_fps)
     end
 end
 
 function modifyDisplay()
     --high display framerates seem to vary between being just above or below the official number so proper rounding is used for the original rate
     if (display.beenReverted == true) then
-        display.originalRate = math.floor(display.originalRate)
+        display.original_fps = math.floor(display.original_fps)
     end
 end
 
 --modifies the properties of the video to work with nircmd
 function modifyVideoProperties()
     --Floor is used because 23fps video has an actual frate of ~23.9
-    display.new_rate = math.floor(display.new_rate)
+    display.new_fps = math.floor(display.new_fps)
 
-    display.new_width, display.new_height = width_height_modifier(display.new_width, display.new_height)
+    display.new_width, display.new_height = getModifiedWidthHeight(display.new_width, display.new_height)
 end
 
-function width_height_modifier(width, height)
+function getModifiedWidthHeight(width, height)
 
     if (options.UHD_adaptive ~= true) then
-        height = display.default_height
-        width = display.default_width
+        height = display.original_height
+        width = display.original_width
         return
     end
 
     --sets the monitor to 2160p if an UHD video is played, otherwise set to the default
     if (height < 1440) then
-        height = display.default_height
-        width = display.default_width
+        height = display.original_height
+        width = display.original_width
     else
         height = 2160
         width = 3840
@@ -223,27 +238,40 @@ function revertRefresh()
     if (display.beenReverted == false) then
         msg.log('v', "reverting refresh rate")
 
-        changeRefresh(display.default_width, display.default_height, display.originalRate)
+        changeRefresh(display.original_width, display.original_height, display.original_fps)
         display.beenReverted = true
     end
 end
 
 --toggles between using estimated and specified fps
+--does so by modifying the script-opt list and reloading options
 function toggleFpsType()
-    if (display.estimated_fps == true) then
-        display.estimated_fps = false
+    local script_opts = mp.get_property("options/script-opts")
+    
+    if (string.find(script_opts, "changerefresh%-estimated_fps=") == nil) then
+        msg.log('v', 'toggling estimated fps - no script-opt found adding option')
+        script_opts = script_opts .. ",changerefresh-estimated_fps=no"
+    end
+
+    if (options.estimated_fps == true) then
+        script_opts = script_opts:gsub("changerefresh%-estimated_fps=yes", "changerefresh%-estimated_fps=no")
+
         mp.commandv("show-text", "Change-Refresh now using container fps")
         msg.log('info', "now using container fps")
     else
-        display.estimated_fps = true
+        script_opts = script_opts:gsub("changerefresh%-estimated_fps=no", "changerefresh%-estimated_fps=yes")
+
         mp.commandv("show-text", "Change-Refresh now using estimated fps")
         msg.log('info', "now using estimated fps")
     end
+    
+    mp.set_property("options/script-opts", script_opts)
+    updateOptions()
 end
 
 --executes commands to switch monior to video refreshrate
 function matchVideo()
-    read_options(options, "changerefresh")
+    updateOptions()
 
     --if the change is executed on a different monitor to the previous, and the previous monitor has not been been reverted
     --then revert the previous changes before changing the new monitor
@@ -257,39 +285,23 @@ function matchVideo()
     modifyVideoProperties()
     modifyDisplay()
 
-    changeRefresh(display.new_width, display.new_height, display.new_rate)
-end
-
---Changes the monitor to use a preset custom refreshrate
-function customRefresh()
-    read_options(options, "changerefresh")
-
-    if (display.beenReverted) then
-        recordMonitorProperties()
-        modifyDisplay()
-    end
-    changeRefresh(options.custom_width, options.custom_height, options.custom_refresh)
-    display.usingCustom = true
+    changeRefresh(display.new_width, display.new_height, display.new_fps)
 end
 
 --sets the current (intended not actual) resoluting and refresh as the default to use upon reversion
 function setDefault()
-    if (display.usingCustom) then
-        display.default_width = options.custom_width
-        display.default_height = options.custom_height
-        display.originalRate = options.custom_refresh
-    else
-        display.default_width = display.new_width
-        display.default_height = display.new_height
-        display.originalRate = display.new_rate
-    end
+    display.original_width, display.original_height = getDisplayResolution()
+    display.original_fps = mp.get_property_number('display-fps')
 
+    print(display.original_width)
+    print(display.original_height)
+    print(display.original_fps)
+    modifyDisplay()
     display.beenReverted = true
-    display.usingCustom = false
 
     --logging chage to OSD & the console
-    msg.log('info', 'set ' .. display.default_width .. "x" .. display.default_height .. " " .. display.originalRate .. "Hz as defaut display rate")
-    mp.commandv('show-text', 'Change-Refresh: set ' .. display.default_width .. "x" .. display.default_height .. " " .. display.originalRate .. "Hz as defaut display rate")
+    msg.log('info', 'set ' .. display.original_width .. "x" .. display.original_height .. " " .. display.original_fps .. "Hz as defaut display rate")
+    mp.commandv('show-text', 'Change-Refresh: set ' .. display.original_width .. "x" .. display.original_height .. " " .. display.original_fps .. "Hz as defaut display rate")
 end
 
 --key tries to changeRefresh current display to match video fps
@@ -301,13 +313,15 @@ mp.add_key_binding(options.revert_refresh_key, "revert_refresh_rate", revertRefr
 --ket to switch between using estimated and specified fps property
 mp.add_key_binding(options.toggle_fps_key, "toggle_fps_type", toggleFpsType)
 
---key to activate custom refresh rate
-mp.add_key_binding(options.custom_refresh_key, "custom_refresh_rate", customRefresh)
-
 --key to set the current resolution and refresh rate as the default
 mp.add_key_binding(options.set_default_key, "set_default_refresh_rate", setDefault)
 
+--sends a command to switch to the specified display rate
+--syntax is: script-message set-display-rate [width] [height] [fps]
 mp.register_script_message("set-display-rate", changeRefresh)
+
+--updates options from script-opts
+mp.register_script_message("changerefresh-update-options", updateOptions)
 
 --reverts refresh on mpv shutdown
 mp.register_event("shutdown", revertRefresh)
