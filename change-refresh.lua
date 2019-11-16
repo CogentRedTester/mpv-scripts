@@ -37,6 +37,15 @@ local options = {
     --see https://mpv.io/manual/master/#command-interface-container-fps for details
     estimated_fps = false,
 
+    --automatically detect monitor resolution when switching
+    --will use this resolution when reverting changes
+    detect_monitor_resolution = true,
+
+    --default width and height to use when reverting the refresh rate
+    --ony used if detect_monitor_resolution is false
+    original_width = 1920,
+    original_height = 1080,
+
     --if true, sets the monitor to 2160p when the resolution of the video is greater than 1440p
     --if less the monitor will be set to the default shown above
     UHD_adaptive = false,
@@ -141,6 +150,7 @@ function recordVideoProperties()
     display.new_height = mp.get_property_number('dheight')
     msg.log('v', "video resolution = " .. display.new_width .. "x" .. display.new_height)
 
+    --saves either the estimated or specified fps of the video
     if (options.estimated_fps == true) then
         display.new_fps = mp.get_property_number('estimated-vf-fps')
     else
@@ -149,6 +159,8 @@ function recordVideoProperties()
 end
 
 --finds the display resolution by going into fullscreen and grabbing the resolution of the OSD
+--this is seemingly the easiest way to get the true screen reolution
+--if detect_screen_resolution is disabled this won't be required
 function getDisplayResolution()
     local isFullscreen = mp.get_property_bool('fullscreen')
 
@@ -166,21 +178,30 @@ function getDisplayResolution()
 end
 
 --records the original monitor properties
-function recordMonitorProperties()
+function recordDisplayProperties()
     --when passed display names nircmd seems to apply the command across all displays instead of just one
     --so to get around this the name must be converted into an integer
     --the names are in the form \\.\DISPLAY# starting from 1, while the integers start from 0
     local name = mp.get_property('display-names')
     msg.log('v', 'display list: ' .. name)
+
+    --if a comma is in the list the mpv window is on mutiple displays
     name1 = name:find(',')
     if (name1 == nil) then
         name = name
     else
         msg.log('v', 'found comma in display list at pos ' .. tostring(name1) .. ', will use the first display')
+
+        --the display-fps property always refers to the first display in the display list
+        --so we must extract the first name from the list
         name = string.sub(name, 0, name1 - 1)
     end
+
     msg.log('v', 'display name = ' .. name)
     display.name = name
+
+    --the last character in the name will always be the display number
+    --we extract the integer and subtract by 1, as nircmd starts from 0
     local number = string.sub(name, -1)
     number = tonumber(number)
     number = number - 1
@@ -188,9 +209,12 @@ function recordMonitorProperties()
     display.number = number
     msg.log('v', 'display number = ' .. number)
 
-    --if beenReverted=true, then the current rate is the original rate of the monitor
+    --if beenReverted=true, then the current display settings are the original and we must save them again
     if (display.beenReverted == true) then
-        display.original_width, display.original_height = getDisplayResolution()
+        --saves the actual resolution if option set, otherwise uses the defaults
+        if options.detect_monitor_resolution then
+            display.original_width, display.original_height = getDisplayResolution()
+        end
 
         display.original_fps = mp.get_property_number('display-fps')
         msg.log('v', 'saving original fps: ' .. display.original_fps)
@@ -280,7 +304,7 @@ function matchVideo()
     end
 
     --records the current monitor prperties and video properties
-    recordMonitorProperties()
+    recordDisplayProperties()
     recordVideoProperties()
     modifyVideoProperties()
     modifyDisplay()
@@ -293,9 +317,6 @@ function setDefault()
     display.original_width, display.original_height = getDisplayResolution()
     display.original_fps = mp.get_property_number('display-fps')
 
-    print(display.original_width)
-    print(display.original_height)
-    print(display.original_fps)
     modifyDisplay()
     display.beenReverted = true
 
