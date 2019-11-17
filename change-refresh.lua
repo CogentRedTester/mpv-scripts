@@ -164,15 +164,11 @@ end
 function getDisplayResolution()
     local isFullscreen = mp.get_property_bool('fullscreen')
 
-    if isFullscreen == false then
-        mp.set_property('fullscreen', 'yes')
-    end
+    mp.set_property_bool('fullscreen', true)
     local width = mp.get_property("osd-width")
     local height = mp.get_property("osd-height")
 
-    if isFullscreen == false then
-        mp.set_property("fullscreen", 'no')
-    end
+    mp.set_property_bool("fullscreen", isFullscreen)
 
     return width, height
 end
