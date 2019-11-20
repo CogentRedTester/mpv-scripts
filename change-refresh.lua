@@ -62,11 +62,11 @@ local options = {
     --useful in conjunction with custom rate settings
     set_default_key = "",
 }
+
 function updateOptions()
     msg.log('v', 'updating options')
     read_options(options, "changerefresh")
 end
-updateOptions()
 
 display = {
     name = "",
@@ -97,6 +97,8 @@ function changeRefresh(width, height, rate)
     local closestRate
     rate = tonumber(rate)
 
+    --picks either the same fps in the whitelist, or the next highest
+    --if none of the whitelisted rates are higher, then it uses the highest
     for validRates in string.gmatch(options.rates, "[%w.]+") do
         validRates = tonumber(validRates)
         closestRate = validRates
@@ -113,8 +115,9 @@ function changeRefresh(width, height, rate)
 
     msg.log('info', "changing monitor " .. monitor .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
 
+    --pauses the video while the change occurs to avoid A/V desyncs
     local isPaused = mp.get_property_bool("pause")
-    mp.set_property("pause", "yes")
+    mp.set_property_bool("pause", true)
     
     local time = mp.get_time()
     utils.subprocess({
@@ -129,8 +132,7 @@ function changeRefresh(width, height, rate)
             [7] = tostring(rate)
         }
     })
-    --waits 3 seconds then unpauses the video
-    --prevents AV desyncs
+    --waits 3 seconds before continuing or until eof/player exit
     while (mp.get_time() - time < 3 and mp.get_property_bool("eof-reached") == false)
     do
         mp.commandv("show-text", "changing monitor " .. monitor .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
@@ -138,10 +140,8 @@ function changeRefresh(width, height, rate)
     
     display.beenReverted = false
 
-    --only unpauses if the video was not already paused
-    if (isPaused == false) then
-        mp.set_property("pause", "no")
-    end
+    --sets the video to the original pause state
+    mp.set_property_bool("pause", isPaused)
 end
 
 --records the properties of the currently playing video
@@ -212,15 +212,8 @@ function recordDisplayProperties()
             display.original_width, display.original_height = getDisplayResolution()
         end
 
-        display.original_fps = mp.get_property_number('display-fps')
+        display.original_fps = math.floor(mp.get_property_number('display-fps'))
         msg.log('v', 'saving original fps: ' .. display.original_fps)
-    end
-end
-
-function modifyDisplay()
-    --high display framerates seem to vary between being just above or below the official number so proper rounding is used for the original rate
-    if (display.beenReverted == true) then
-        display.original_fps = math.floor(display.original_fps)
     end
 end
 
@@ -260,6 +253,8 @@ function revertRefresh()
 
         changeRefresh(display.original_width, display.original_height, display.original_fps)
         display.beenReverted = true
+    else
+        msg.log('v', "aborting reversion, display has not been changed")
     end
 end
 
@@ -286,13 +281,10 @@ function toggleFpsType()
     end
     
     mp.set_property("options/script-opts", script_opts)
-    updateOptions()
 end
 
 --executes commands to switch monior to video refreshrate
 function matchVideo()
-    updateOptions()
-
     --if the change is executed on a different monitor to the previous, and the previous monitor has not been been reverted
     --then revert the previous changes before changing the new monitor
     if ((display.beenReverted == false) and (display.name ~= mp.get_property('display-names'))) then
@@ -303,7 +295,6 @@ function matchVideo()
     recordDisplayProperties()
     recordVideoProperties()
     modifyVideoProperties()
-    modifyDisplay()
 
     changeRefresh(display.new_width, display.new_height, display.new_fps)
 end
@@ -311,12 +302,11 @@ end
 --sets the current (intended not actual) resoluting and refresh as the default to use upon reversion
 function setDefault()
     display.original_width, display.original_height = getDisplayResolution()
-    display.original_fps = mp.get_property_number('display-fps')
+    display.original_fps = math.floor(mp.get_property_number('display-fps'))
 
-    modifyDisplay()
     display.beenReverted = true
 
-    --logging chage to OSD & the console
+    --logging change to OSD & the console
     msg.log('info', 'set ' .. display.original_width .. "x" .. display.original_height .. " " .. display.original_fps .. "Hz as defaut display rate")
     mp.commandv('show-text', 'Change-Refresh: set ' .. display.original_width .. "x" .. display.original_height .. " " .. display.original_fps .. "Hz as defaut display rate")
 end
@@ -337,8 +327,8 @@ mp.add_key_binding(options.set_default_key, "set_default_refresh_rate", setDefau
 --syntax is: script-message set-display-rate [width] [height] [fps]
 mp.register_script_message("set-display-rate", changeRefresh)
 
---updates options from script-opts
-mp.register_script_message("changerefresh-update-options", updateOptions)
+--updates options from script-opts whenever script-opts changes
+mp.observe_property("options/script-opts", nil, updateOptions)
 
 --reverts refresh on mpv shutdown
 mp.register_event("shutdown", revertRefresh)
