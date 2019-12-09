@@ -217,4 +217,9 @@ function find_and_add_entries()
     add_files_at(pl_current, append[-1])
 end
 
-mp.add_key_binding('Ctrl+F8', "load-playlist", find_and_add_entries)
+function autoload_keybind()
+    find_and_add_entries()
+    mp.commandv("show-text", "autoloading playlist from directory")
+end
+
+mp.add_key_binding('Ctrl+F8', "autoload-playlist", autoload_keybind)
