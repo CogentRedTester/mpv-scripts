@@ -11,11 +11,16 @@ This script is idealy used with televisions that support the full range of media
 The script will keep track of the original refresh rate of the monitor and revert when either the
 correct keybind is pressed, or when mpv exits.
 
-The script is currently hardcoded to set a resolution of 1920x1080p for videos with a height of < 1440 pixels,
-and 3840x2160p for any height larger
+The script is able to find the current resolution of the monitor and will always use those dimensions when switching refresh rates,
+however I have an UHD mode (UHD adaptive) hardcoded to use a resolution of 3840x2160p for videos with a height of > 1440 pixels.
+
+It is also possible to disable automatic monitor resolution detection and use manual values (see options below).
+The detection is done via switching to fullscreen mode and grabbing the resolution of the OSD, so it can be disabled if one finds it annoying.
 
 you can also send refresh change commands using script messages:
 script-message set-display-rate [width] [height] [rate]
+
+these manual changes will still follow the whitelist behaviour mentioned above but can use any resolution
 --]]
 
 
