@@ -1,4 +1,5 @@
 --detects when shaders are activated or deactivated and does a short seek to prevent AV desyncs
+--may not be needed now that mpv does not fallback to audio mode on large desyncs
 
 msg =  require 'mp.msg'
 
