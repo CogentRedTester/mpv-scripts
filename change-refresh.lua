@@ -39,6 +39,9 @@ local options = {
     --nircmd only seems to work with integers, DO NOT use the full refresh rate, i.e. 23.976
     rates = "23;24;25;29;30;50;59;60",
 
+    --change refresh automatically on startup
+    auto = false,
+
     --set whether to use the estimated fps or the container fps
     --see https://mpv.io/manual/master/#command-interface-container-fps for details
     estimated_fps = false,
@@ -64,7 +67,7 @@ local options = {
     --key to switch between estimated and specified fps
     toggle_fps_key = "",
 
-    --sets the resolution and refresh rate of the currently modified monitor to be the default
+    --sets the resolution and refresh rate of the currently modified monitor to be the default.
     set_default_key = "",
 }
 
@@ -153,7 +156,7 @@ end
 function recordVideoProperties()
     display.new_width = mp.get_property_number('dwidth')
     display.new_height = mp.get_property_number('dheight')
-    msg.log('v', "video resolution = " .. display.new_width .. "x" .. display.new_height)
+    msg.log('v', "video resolution = " .. tostring(display.new_width) .. "x" .. tostring(display.new_height))
 
     --saves either the estimated or specified fps of the video
     if (options.estimated_fps == true) then
@@ -172,6 +175,8 @@ function getDisplayResolution()
     mp.set_property_bool('fullscreen', true)
     local width = mp.get_property("osd-width")
     local height = mp.get_property("osd-height")
+
+    msg.verbose('original monitor resolution = ' .. tostring(width) .. 'x' .. tostring(height))
 
     mp.set_property_bool("fullscreen", isFullscreen)
 
@@ -240,11 +245,9 @@ function getModifiedWidthHeight(width, height)
     if (options.UHD_adaptive ~= true) then
         height = display.original_height
         width = display.original_width
-        return
-    end
-
+        
     --sets the monitor to 2160p if an UHD video is played, otherwise set to the default
-    if (height < 1440) then
+    elseif (height < 1440) then
         height = display.original_height
         width = display.original_width
     else
@@ -326,6 +329,17 @@ function customChange(width, height, rate)
     changeRefresh(width, height, rate)
 end
 
+--runs the script automatically on startup if option is enabled
+function autoChange()
+    if options.auto then
+        --waits until some of the required properties have been loaded before running
+        while mp.get_property_number('time-pos') < 0.5 do end
+
+        msg.verbose('automatically changing refresh')
+        matchVideo()
+    end
+end
+
 --key tries to changeRefresh current display to match video fps
 mp.add_key_binding(options.change_refresh_key, "change_refresh_rate", matchVideo)
 
@@ -344,6 +358,9 @@ mp.register_script_message("set-display-rate", customChange)
 
 --updates options from script-opts whenever script-opts changes
 mp.observe_property("options/script-opts", nil, updateOptions)
+
+--runs the script automatically on startup if option is enabled
+mp.register_event('file-loaded', autoChange)
 
 --reverts refresh on mpv shutdown
 mp.register_event("shutdown", revertRefresh)
