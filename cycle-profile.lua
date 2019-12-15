@@ -7,6 +7,9 @@
     The script will print the profile description to the screen when switching, if there is no profile description, then it just prints the name
 ]]--
 
+--change this to change what character separates the profile names
+seperator = ";"
+
 msg = require 'mp.msg'
 
 --splits the profiles string into an array of profile names
@@ -26,7 +29,7 @@ end
 profileList = mp.get_property_native('profile-list')
 
 --keeps track of current profile for every unique cycle
-profileIterator = {}
+iterator = {}
 
 --stores descriptions for profiles
 --once requested a description is stored here so it does not need to be found again
@@ -71,29 +74,29 @@ end
 
 function main(profileStr)
     --if there is not already an iterator for this cycle then it creates one
-    if profileIterator[profileStr] == nil then
+    if iterator[profileStr] == nil then
         msg.verbose('unknown cycle, creating new iterator')
-        profileIterator[profileStr] = 1
+        iterator[profileStr] = 1
     end
-    local iterator = profileIterator[profileStr]
+    local i = iterator[profileStr]
 
     --converts the string into an array of profile names
-    local profiles = mysplit(profileStr, ";")
+    local profiles = mysplit(profileStr, seperator)
     msg.verbose('cycling ' .. tostring(profiles))
     msg.verbose("number of profiles: " .. tostring(#profiles))
 
     --sends the command to apply the profile
-    msg.info("applying profile " .. profiles[iterator])
-    mp.commandv('apply-profile', profiles[iterator])
+    msg.info("applying profile " .. profiles[i])
+    mp.commandv('apply-profile', profiles[i])
 
     --prints the profile description to the OSD
-    printProfileDesc(profiles[iterator])
+    printProfileDesc(profiles[i])
 
     --moves the iterator
-    profileIterator[profileStr] = profileIterator[profileStr] + 1
-    if profileIterator[profileStr] > #profiles then
+    iterator[profileStr] = iterator[profileStr] + 1
+    if iterator[profileStr] > #profiles then
         msg.verbose('reached end of profiles, wrapping back to start')
-        profileIterator[profileStr] = 1
+        iterator[profileStr] = 1
     end
 end
 
