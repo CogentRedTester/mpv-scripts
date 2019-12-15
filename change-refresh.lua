@@ -178,8 +178,7 @@ function getDisplayResolution()
     return width, height
 end
 
---records the original monitor properties
-function recordDisplayProperties()
+function findDisplayName()
     --when passed display names nircmd seems to apply the command across all displays instead of just one
     --so to get around this the name must be converted into an integer
     --the names are in the form \\.\DISPLAY# starting from 1, while the integers start from 0
@@ -209,6 +208,12 @@ function recordDisplayProperties()
 
     display.number = number
     msg.log('v', 'display number = ' .. number)
+
+end
+
+--records the original monitor properties
+function recordDisplayProperties()
+    findDisplayName()
 
     --if beenReverted=true, then the current display settings are the original and we must save them again
     if (display.beenReverted == true) then
@@ -316,6 +321,11 @@ function setDefault()
     mp.commandv('show-text', 'Change-Refresh: set ' .. display.original_width .. "x" .. display.original_height .. " " .. display.original_fps .. "Hz as defaut display rate")
 end
 
+function customChange(width, height, rate)
+    findDisplayName()
+    changeRefresh(width, height, rate)
+end
+
 --key tries to changeRefresh current display to match video fps
 mp.add_key_binding(options.change_refresh_key, "change_refresh_rate", matchVideo)
 
@@ -330,7 +340,7 @@ mp.add_key_binding(options.set_default_key, "set_default_refresh_rate", setDefau
 
 --sends a command to switch to the specified display rate
 --syntax is: script-message set-display-rate [width] [height] [fps]
-mp.register_script_message("set-display-rate", changeRefresh)
+mp.register_script_message("set-display-rate", customChange)
 
 --updates options from script-opts whenever script-opts changes
 mp.observe_property("options/script-opts", nil, updateOptions)
