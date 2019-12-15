@@ -29,6 +29,7 @@ msg = require 'mp.msg'
 require 'mp.options'
 
 --options available through --script-opts=changerefresh-[option]=value
+--all of these options can be changed at runtime using profiles, the script will automatically update
 local options = {
     --the location of nircmd.exe, tries to use the %Path% by default
     nircmd = "nircmd",
@@ -64,7 +65,6 @@ local options = {
     toggle_fps_key = "",
 
     --sets the resolution and refresh rate of the currently modified monitor to be the default
-    --useful in conjunction with custom rate settings
     set_default_key = "",
 }
 
