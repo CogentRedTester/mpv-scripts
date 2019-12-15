@@ -24,8 +24,10 @@ end
 
 --table of all available profiles and options
 profileList = mp.get_property_native('profile-list')
---keeps track of current rpofile in cycle for every unique cycle
+
+--keeps track of current profile for every unique cycle
 profileIterator = {}
+
 --stores descriptions for profiles
 --once requested a description is stored here so it does not need to be found again
 profilesDescs = {}
@@ -43,7 +45,7 @@ function findDesc(profile)
                 msg.verbose('description found')
                 profilesDescs[profile] = desc
             else
-                msg.verbose('no description, using name')
+                msg.verbose('no description, will use name')
                 profilesDescs[profile] = profile
             end
             return
@@ -51,7 +53,7 @@ function findDesc(profile)
     end
 
     msg.verbose('profile not found')
-    profilesDescs[profile] = 'no profile ' .. profile
+    profilesDescs[profile] = "no profile '" .. profile .. "'"
 end
 
 --prints the profile description to the OSD
