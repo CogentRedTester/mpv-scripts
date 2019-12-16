@@ -71,11 +71,6 @@ local options = {
     set_default_key = "",
 }
 
-function updateOptions()
-    msg.log('v', 'updating options')
-    read_options(options, "changerefresh")
-end
-
 display = {
     name = "",
     number = "0",
@@ -88,7 +83,15 @@ display = {
     new_height = "",
     beenReverted = true,
     usingCustom = false,
+    validRates = {},
+    rateSwitches = {}
 }
+
+function updateOptions()
+    msg.log('v', 'updating options')
+    read_options(options, "changerefresh")
+    updateTable()
+end
 
 function round(value)
     if (value % 1 >= 0.5) then
@@ -100,6 +103,18 @@ function round(value)
     return value
 end
 
+function updateTable()
+    for validRates in string.gmatch(options.rates, "[^;]+") do
+        if validRates:match("-") then
+            local originalRate = validRates:gsub("-.*$", "")
+            local newRate = validRates:gsub(".*-", "")
+            display.rateSwitches[tonumber(originalRate)] = tonumber(newRate)
+            validRates = originalRate
+        end
+        table.insert(display.validRates, validRates)
+    end
+end
+
 --calls nircmd to change the display resolution and rate
 function changeRefresh(width, height, rate)
     local closestRate
@@ -107,14 +122,20 @@ function changeRefresh(width, height, rate)
 
     --picks either the same fps in the whitelist, or the next highest
     --if none of the whitelisted rates are higher, then it uses the highest
-    for validRates in string.gmatch(options.rates, "[%w.]+") do
+    for i = 1, #display.validRates, 1 do
+        local validRates = display.validRates[i]
         validRates = tonumber(validRates)
         closestRate = validRates
         if (rate <= validRates) then
             break
         end
     end
+
     rate = closestRate
+
+    if display.rateSwitches[rate] ~= nil then
+        rate = display.rateSwitches[rate]
+    end
 
     local monitor = display.number
     msg.log('v', 'calling nircmd with command: ' .. options.nircmd)
@@ -339,6 +360,8 @@ function autoChange()
         matchVideo()
     end
 end
+
+updateOptions()
 
 --key tries to changeRefresh current display to match video fps
 mp.add_key_binding(options.change_refresh_key, "change_refresh_rate", matchVideo)
