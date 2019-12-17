@@ -63,7 +63,7 @@ local options = {
     original_height = 1080,
 
     --if true, sets the monitor to 2160p when the resolution of the video is greater than 1440p
-    --if less the monitor will be set to the default shown above
+    --if less the monitor will be set to the default shown above, or to the current resolution
     UHD_adaptive = false,
 }
 
@@ -78,14 +78,13 @@ var = {
     new_width = "",
     new_height = "",
     beenReverted = true,
-    usingCustom = false,
     rateList = {},
     rates = {}
 }
 
 --is run whenever a change in script-opts is detected
 function updateOptions()
-    msg.verbose( 'updating options')
+    msg.verbose('updating options')
     read_options(options, "changerefresh")
     checkRatesString()
     updateTable()
@@ -149,11 +148,11 @@ end
 
 --calls nircmd to change the display resolution and rate
 function changeRefresh(width, height, rate)
-    msg.verbose( 'calling nircmd with command: ' .. options.nircmd)
-    msg.verbose( 'changing display: ' .. var.dname)
-    msg.verbose( 'current refresh = ' .. mp.get_property('display-fps'))
+    msg.verbose('calling nircmd with command: ' .. options.nircmd)
+    msg.verbose('changing display: ' .. var.dname)
+    msg.verbose('current refresh = ' .. mp.get_property('display-fps'))
 
-    msg.info( "changing monitor " .. var.dnumber .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
+    msg.info("changing monitor " .. var.dnumber .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
 
     --pauses the video while the change occurs to avoid A/V desyncs
     local isPaused = mp.get_property_bool("pause")
@@ -207,21 +206,21 @@ end
 --the names are in the form \\.\DISPLAY# starting from 1, while the integers start from 0
 function findDisplayNumber()
     local name = mp.get_property('display-names')
-    msg.verbose( 'display list: ' .. name)
+    msg.verbose('display list: ' .. name)
 
     --if a comma is in the list the mpv window is on mutiple displays
     name1 = name:find(',')
     if (name1 == nil) then
         name = name
     else
-        msg.verbose( 'found comma in display list at pos ' .. tostring(name1) .. ', will use the first display')
+        msg.verbose('found comma in display list at pos ' .. tostring(name1) .. ', will use the first display')
 
         --the display-fps property always refers to the first display in the display list
         --so we must extract the first name from the list
         name = string.sub(name, 0, name1 - 1)
     end
 
-    msg.verbose( 'display name = ' .. name)
+    msg.verbose('display name = ' .. name)
     var.dname = name
 
     --the last character in the name will always be the display number
@@ -231,7 +230,7 @@ function findDisplayNumber()
     number = number - 1
 
     var.dnumber = number
-    msg.verbose( 'display number = ' .. number)
+    msg.verbose('display number = ' .. number)
 
 end
 
@@ -254,7 +253,7 @@ function getModifiedWidthHeight(width, height)
     end
 
     ::functionend::
-    msg.verbose( "setting display to: " .. width .. "x" .. height)
+    msg.verbose("setting display to: " .. width .. "x" .. height)
     return width, height
 end
 
@@ -264,7 +263,7 @@ function toggleFpsType()
     local script_opts = mp.get_property("options/script-opts")
     
     if (string.find(script_opts, "changerefresh%-estimated_fps=") == nil) then
-        msg.verbose( 'toggling estimated fps - no script-opt found adding option')
+        msg.verbose('toggling estimated fps - no script-opt found adding option')
         script_opts = script_opts .. ",changerefresh-estimated_fps=no"
     end
 
@@ -272,12 +271,12 @@ function toggleFpsType()
         script_opts = script_opts:gsub("changerefresh%-estimated_fps=yes", "changerefresh%-estimated_fps=no")
 
         mp.commandv("show-text", "[Change-Refresh] now using container fps")
-        msg.info( "now using container fps")
+        msg.info("now using container fps")
     else
         script_opts = script_opts:gsub("changerefresh%-estimated_fps=no", "changerefresh%-estimated_fps=yes")
 
         mp.commandv("show-text", "[Change-Refresh] now using estimated fps")
-        msg.info( "now using estimated fps")
+        msg.info("now using estimated fps")
     end
     
     --the script is observing the scipt-opts property, so it will automatically update options after this line is run
@@ -322,13 +321,13 @@ function matchVideo()
         end
 
         var.original_fps = math.floor(mp.get_property_number('display-fps'))
-        msg.verbose( 'saving original fps: ' .. var.original_fps)
+        msg.verbose('saving original fps: ' .. var.original_fps)
     end
 
     --records video properties
     var.new_width = mp.get_property_number('dwidth')
     var.new_height = mp.get_property_number('dheight')
-    msg.verbose( "video resolution = " .. tostring(var.new_width) .. "x" .. tostring(var.new_height))
+    msg.verbose("video resolution = " .. tostring(var.new_width) .. "x" .. tostring(var.new_height))
 
     --saves either the estimated or specified fps of the video
     if (options.estimated_fps == true) then
@@ -354,13 +353,13 @@ end
 --reverts the monitor to its original refresh rate
 function revertRefresh()
     if (var.beenReverted == false) then
-        msg.verbose( "reverting refresh rate")
+        msg.verbose("reverting refresh rate")
 
         local rate = findValidRate(var.original_fps)
         changeRefresh(var.original_width, var.original_height, rate)
         var.beenReverted = true
     else
-        msg.verbose( "aborting reversion, display has not been changed")
+        msg.verbose("aborting reversion, display has not been changed")
     end
 end
 
@@ -372,7 +371,7 @@ function setDefault()
     var.beenReverted = true
 
     --logging change to OSD & the console
-    msg.info( 'set ' .. var.original_width .. "x" .. var.original_height .. " " .. var.original_fps .. "Hz as defaut display rate")
+    msg.info('set ' .. var.original_width .. "x" .. var.original_height .. " " .. var.original_fps .. "Hz as defaut display rate")
     mp.commandv('show-text', 'Change-Refresh: set ' .. var.original_width .. "x" .. var.original_height .. " " .. var.original_fps .. "Hz as defaut display rate")
 end
 
