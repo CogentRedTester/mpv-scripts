@@ -5,11 +5,17 @@ This was written because I could not get autospeedwin to work :(
 If the display does not support the specified resolution or refresh rate it will silently fail
 If the video refresh rate does not match any on the whitelist it will pick the next highest.
 If the video fps is higher tha any on the whitelist it will pick the highest available
+The whitelist is specified via the script-opt rates. Valid rates are separated via semicolons, do not include spaces and list in asceding order.
+You can also set a custom display rate for individual video rates using a hyphen, for example:
+    script-opts=changerefresh-rates="23;24;25-50;30;60"
+This will change the display to 23, 24, and 30 fps when playing videos in those same rates, but will change the display to 50 fps when
+playing videos in 25 Hz
 
-This script is idealy used with televisions that support the full range of media refresh rates (23, 24, 25, 29, 30, 59, 60, etc)
+This script is idealy used with displays that support the full range of media refresh rates (23, 24, 25, 29, 30, 59, 60, etc)
 
 The script will keep track of the original refresh rate of the monitor and revert when either the
-correct keybind is pressed, or when mpv exits.
+correct keybind is pressed, or when mpv exits. The original rate needs to be included on the whitelist, but if the rate is
+hyphenated, it will ignore the switched rate and just use the original
 
 The script is able to find the current resolution of the monitor and will always use those dimensions when switching refresh rates,
 however I have an UHD mode (UHD adaptive) hardcoded to use a resolution of 3840x2160p for videos with a height of > 1440 pixels.
@@ -18,9 +24,9 @@ It is also possible to disable automatic monitor resolution detection and use ma
 The detection is done via switching to fullscreen mode and grabbing the resolution of the OSD, so it can be disabled if one finds it annoying.
 
 you can also send refresh change commands using script messages:
-script-message set-display-rate [width] [height] [rate]
+    script-message set-display-rate [width] [height] [rate]
 
-these manual changes will still follow the whitelist behaviour mentioned above but can use any resolution
+these manual changes bypass the whitelist and rate associations and are sent to nircmd directly, so make sure you send a valid integer
 --]]
 
 
@@ -35,6 +41,8 @@ local options = {
     nircmd = "nircmd",
 
     --list of valid refresh rates, separated by semicolon, listed in ascending order
+    --by adding a hyphen after a number you can set a custom display rate for that specific fiseo rate:
+    --  "23;24;25-50;60"  Will set the display to 50fps for 25fps videos
     --this whitelist also applies when attempting to revert the display, so include that rate in the list
     --nircmd only seems to work with integers, DO NOT use the full refresh rate, i.e. 23.976
     rates = "23;24;25;29;30;50;59;60",
@@ -83,13 +91,14 @@ display = {
     new_height = "",
     beenReverted = true,
     usingCustom = false,
-    validRates = {},
-    rateSwitches = {}
+    rateList = {},
+    rates = {}
 }
 
 function updateOptions()
     msg.log('v', 'updating options')
     read_options(options, "changerefresh")
+    checkRatesString()
     updateTable()
 end
 
@@ -103,39 +112,63 @@ function round(value)
     return value
 end
 
+--checks if the rates string contains any invalid characters
+function checkRatesString()
+    local str = options.rates
+    
+
+    str = str:gsub(";", '')
+    str = str:gsub("%-", '')
+
+    if str:match("%D") then
+        print ('rates whitelist contains invalid characters, can only contain numbers, semicolons and hyphens')
+    end
+end
+
+--creates an array of valid video rates and a map of display rates to switch to
 function updateTable()
-    for validRates in string.gmatch(options.rates, "[^;]+") do
-        if validRates:match("-") then
-            local originalRate = validRates:gsub("-.*$", "")
-            local newRate = validRates:gsub(".*-", "")
-            display.rateSwitches[tonumber(originalRate)] = tonumber(newRate)
-            validRates = originalRate
+    msg.verbose("updating tables of valid rates")
+    for rate in string.gmatch(options.rates, "[^;]+") do
+        msg.debug("found option: " .. rate)
+        if rate:match("-") then
+            msg.debug("contains hyphen, extracting custom rates")
+            local originalRate = rate:gsub("-.*$", "")
+            msg.debug("-originalRate = " .. originalRate)
+            local newRate = rate:gsub(".*-", "")
+            msg.debug("-customRate = " .. newRate)
+            originalRate = tonumber(originalRate)
+            newRate = tonumber(newRate)
+
+            --tests for nil values caused by missing rates on either side of hyphens
+            if originalRate == nil and newRate == nil then
+                msg.debug('-no rates found, ignoring')
+                goto loopend
+            end
+
+            if originalRate == nil then
+                msg.info("missing rate before hyphen in whitelist")
+                msg.info("ignoring and setting " .. rate .. " to " .. newRate)
+                originalRate = newRate
+            end
+            if newRate == nil then
+                msg.info("missing rate after hyphen in whitelist")
+                msg.info("ignoring and setting " .. rate .. " to " .. originalRate)
+                newRate = originalRate
+            end
+            display.rates[originalRate] = newRate
+            rate = originalRate
+        else
+            rate = tonumber(rate)
+            display.rates[rate] = rate
         end
-        table.insert(display.validRates, validRates)
+        table.insert(display.rateList, rate)
+
+        ::loopend::
     end
 end
 
 --calls nircmd to change the display resolution and rate
 function changeRefresh(width, height, rate)
-    local closestRate
-    rate = tonumber(rate)
-
-    --picks either the same fps in the whitelist, or the next highest
-    --if none of the whitelisted rates are higher, then it uses the highest
-    for i = 1, #display.validRates, 1 do
-        local validRates = display.validRates[i]
-        validRates = tonumber(validRates)
-        closestRate = validRates
-        if (rate <= validRates) then
-            break
-        end
-    end
-
-    rate = closestRate
-
-    if display.rateSwitches[rate] ~= nil then
-        rate = display.rateSwitches[rate]
-    end
 
     local monitor = display.number
     msg.log('v', 'calling nircmd with command: ' .. options.nircmd)
@@ -285,7 +318,8 @@ function revertRefresh()
     if (display.beenReverted == false) then
         msg.log('v', "reverting refresh rate")
 
-        changeRefresh(display.original_width, display.original_height, display.original_fps)
+        local rate = findValidRate(display.original_fps)
+        changeRefresh(display.original_width, display.original_height, rate)
         display.beenReverted = true
     else
         msg.log('v', "aborting reversion, display has not been changed")
@@ -305,16 +339,36 @@ function toggleFpsType()
     if (options.estimated_fps == true) then
         script_opts = script_opts:gsub("changerefresh%-estimated_fps=yes", "changerefresh%-estimated_fps=no")
 
-        mp.commandv("show-text", "Change-Refresh now using container fps")
+        mp.commandv("show-text", "[Change-Refresh] now using container fps")
         msg.log('info', "now using container fps")
     else
         script_opts = script_opts:gsub("changerefresh%-estimated_fps=no", "changerefresh%-estimated_fps=yes")
 
-        mp.commandv("show-text", "Change-Refresh now using estimated fps")
+        mp.commandv("show-text", "[Change-Refresh] now using estimated fps")
         msg.log('info', "now using estimated fps")
     end
     
+    --the script is observing the scipt-opts property, so it will automatically update options after this line is run
     mp.set_property("options/script-opts", script_opts)
+end
+
+--picks which whitelisted rate to switch the monitor to
+function findValidRate(rate)
+    msg.verbose('searching for closest valid rate to ' .. rate)
+    local closestRate
+    rate = tonumber(rate)
+
+    --picks either the same fps in the whitelist, or the next highest
+    --if none of the whitelisted rates are higher, then it uses the highest
+    for i = 1, #display.rateList, 1 do
+        closestRate = display.rateList[i]
+        msg.debug('comparing ' .. closestRate .. ' to ' .. rate)
+        if (closestRate >= rate) then
+            break
+        end
+    end
+    msg.verbose('closest rate is ' .. closestRate)
+    return closestRate
 end
 
 --executes commands to switch monior to video refreshrate
@@ -330,7 +384,14 @@ function matchVideo()
     recordVideoProperties()
     modifyVideoProperties()
 
-    changeRefresh(display.new_width, display.new_height, display.new_fps)
+    --picks which whitelisted rate to switch the monitor to based on the video rate
+    local rate = findValidRate(display.new_fps)
+
+    --if the user has set a custom display rate for the video rate, then rate is changed to the new one
+    msg.verbose('saved display rate for ' .. rate .. ' is ' .. display.rates[rate])
+    rate = display.rates[rate]
+
+    changeRefresh(display.new_width, display.new_height, rate)
 end
 
 --sets the current (intended not actual) resoluting and refresh as the default to use upon reversion
