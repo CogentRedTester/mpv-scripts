@@ -29,7 +29,6 @@ you can also send refresh change commands using script messages:
 these manual changes bypass the whitelist and rate associations and are sent to nircmd directly, so make sure you send a valid integer
 --]]
 
-
 utils = require 'mp.utils'
 msg = require 'mp.msg'
 require 'mp.options'
@@ -41,7 +40,7 @@ local options = {
     nircmd = "nircmd",
 
     --list of valid refresh rates, separated by semicolon, listed in ascending order
-    --by adding a hyphen after a number you can set a custom display rate for that specific fiseo rate:
+    --by adding a hyphen after a number you can set a custom display rate for that specific video rate:
     --  "23;24;25-50;60"  Will set the display to 50fps for 25fps videos
     --this whitelist also applies when attempting to revert the display, so include that rate in the list
     --nircmd only seems to work with integers, DO NOT use the full refresh rate, i.e. 23.976
@@ -66,22 +65,11 @@ local options = {
     --if true, sets the monitor to 2160p when the resolution of the video is greater than 1440p
     --if less the monitor will be set to the default shown above
     UHD_adaptive = false,
-
-    --keys to change and revert the monitor
-    --all keys are configurable via script-binding in input.conf, see bottom of script for the names
-    change_refresh_key = "f10",
-    revert_refresh_key = "Ctrl+f10",
-
-    --key to switch between estimated and specified fps
-    toggle_fps_key = "",
-
-    --sets the resolution and refresh rate of the currently modified monitor to be the default.
-    set_default_key = "",
 }
 
-display = {
-    name = "",
-    number = "0",
+var = {
+    dname = "",
+    dnumber = "0",
     original_width = options.original_width,
     original_height = options.original_height,
     bdepth = "32",
@@ -95,28 +83,18 @@ display = {
     rates = {}
 }
 
+--is run whenever a change in script-opts is detected
 function updateOptions()
-    msg.log('v', 'updating options')
+    msg.verbose( 'updating options')
     read_options(options, "changerefresh")
     checkRatesString()
     updateTable()
-end
-
-function round(value)
-    if (value % 1 >= 0.5) then
-        value = math.ceil(value)
-    else
-        value = math.floor(value)
-    end
-
-    return value
 end
 
 --checks if the rates string contains any invalid characters
 function checkRatesString()
     local str = options.rates
     
-
     str = str:gsub(";", '')
     str = str:gsub("%-", '')
 
@@ -132,10 +110,13 @@ function updateTable()
         msg.debug("found option: " .. rate)
         if rate:match("-") then
             msg.debug("contains hyphen, extracting custom rates")
+
             local originalRate = rate:gsub("-.*$", "")
             msg.debug("-originalRate = " .. originalRate)
+
             local newRate = rate:gsub(".*-", "")
             msg.debug("-customRate = " .. newRate)
+
             originalRate = tonumber(originalRate)
             newRate = tonumber(newRate)
 
@@ -146,22 +127,21 @@ function updateTable()
             end
 
             if originalRate == nil then
-                msg.info("missing rate before hyphen in whitelist")
-                msg.info("ignoring and setting " .. rate .. " to " .. newRate)
-                originalRate = newRate
+                msg.info("missing rate before hyphen in whitelist, ignoring option")
+                goto loopend
             end
             if newRate == nil then
                 msg.info("missing rate after hyphen in whitelist")
                 msg.info("ignoring and setting " .. rate .. " to " .. originalRate)
                 newRate = originalRate
             end
-            display.rates[originalRate] = newRate
+            var.rates[originalRate] = newRate
             rate = originalRate
         else
             rate = tonumber(rate)
-            display.rates[rate] = rate
+            var.rates[rate] = rate
         end
-        table.insert(display.rateList, rate)
+        table.insert(var.rateList, rate)
 
         ::loopend::
     end
@@ -169,13 +149,11 @@ end
 
 --calls nircmd to change the display resolution and rate
 function changeRefresh(width, height, rate)
+    msg.verbose( 'calling nircmd with command: ' .. options.nircmd)
+    msg.verbose( 'changing display: ' .. var.dname)
+    msg.verbose( 'current refresh = ' .. mp.get_property('display-fps'))
 
-    local monitor = display.number
-    msg.log('v', 'calling nircmd with command: ' .. options.nircmd)
-    msg.log('v', 'changing display: ' .. display.name)
-    msg.log('v', 'current refresh = ' .. mp.get_property('display-fps'))
-
-    msg.log('info', "changing monitor " .. monitor .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
+    msg.info( "changing monitor " .. var.dnumber .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
 
     --pauses the video while the change occurs to avoid A/V desyncs
     local isPaused = mp.get_property_bool("pause")
@@ -187,41 +165,27 @@ function changeRefresh(width, height, rate)
         ["args"] = {
             [1] = options.nircmd,
             [2] = "setdisplay",
-            [3] = "monitor:" .. tostring(monitor),
+            [3] = "monitor:" .. tostring(var.dnumber),
             [4] = tostring(width),
             [5] = tostring(height),
-            [6] = display.bdepth,
+            [6] = var.bdepth,
             [7] = tostring(rate)
         }
     })
     --waits 3 seconds before continuing or until eof/player exit
     while (mp.get_time() - time < 3 and mp.get_property_bool("eof-reached") == false)
     do
-        mp.commandv("show-text", "changing monitor " .. monitor .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
+        mp.commandv("show-text", "changing monitor " .. var.dnumber .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
     end
     
-    display.beenReverted = false
+    var.beenReverted = false
 
     --sets the video to the original pause state
     mp.set_property_bool("pause", isPaused)
 end
 
---records the properties of the currently playing video
-function recordVideoProperties()
-    display.new_width = mp.get_property_number('dwidth')
-    display.new_height = mp.get_property_number('dheight')
-    msg.log('v', "video resolution = " .. tostring(display.new_width) .. "x" .. tostring(display.new_height))
-
-    --saves either the estimated or specified fps of the video
-    if (options.estimated_fps == true) then
-        display.new_fps = mp.get_property_number('estimated-vf-fps')
-    else
-        display.new_fps = mp.get_property_number('container-fps')
-    end
-end
-
 --finds the display resolution by going into fullscreen and grabbing the resolution of the OSD
---this is seemingly the easiest way to get the true screen reolution
+--this is seemingly the easiest way to get the true screen resolution
 --if detect_screen_resolution is disabled this won't be required
 function getDisplayResolution()
     local isFullscreen = mp.get_property_bool('fullscreen')
@@ -237,27 +201,28 @@ function getDisplayResolution()
     return width, height
 end
 
-function findDisplayName()
-    --when passed display names nircmd seems to apply the command across all displays instead of just one
-    --so to get around this the name must be converted into an integer
-    --the names are in the form \\.\DISPLAY# starting from 1, while the integers start from 0
+--Finds the name of the display mpv is currently running on
+--when passed display names nircmd seems to apply the command across all displays instead of just one
+--so to get around this the name must be converted into an integer
+--the names are in the form \\.\DISPLAY# starting from 1, while the integers start from 0
+function findDisplayNumber()
     local name = mp.get_property('display-names')
-    msg.log('v', 'display list: ' .. name)
+    msg.verbose( 'display list: ' .. name)
 
     --if a comma is in the list the mpv window is on mutiple displays
     name1 = name:find(',')
     if (name1 == nil) then
         name = name
     else
-        msg.log('v', 'found comma in display list at pos ' .. tostring(name1) .. ', will use the first display')
+        msg.verbose( 'found comma in display list at pos ' .. tostring(name1) .. ', will use the first display')
 
         --the display-fps property always refers to the first display in the display list
         --so we must extract the first name from the list
         name = string.sub(name, 0, name1 - 1)
     end
 
-    msg.log('v', 'display name = ' .. name)
-    display.name = name
+    msg.verbose( 'display name = ' .. name)
+    var.dname = name
 
     --the last character in the name will always be the display number
     --we extract the integer and subtract by 1, as nircmd starts from 0
@@ -265,65 +230,32 @@ function findDisplayName()
     number = tonumber(number)
     number = number - 1
 
-    display.number = number
-    msg.log('v', 'display number = ' .. number)
+    var.dnumber = number
+    msg.verbose( 'display number = ' .. number)
 
 end
 
---records the original monitor properties
-function recordDisplayProperties()
-    findDisplayName()
-
-    --if beenReverted=true, then the current display settings are the original and we must save them again
-    if (display.beenReverted == true) then
-        --saves the actual resolution if option set, otherwise uses the defaults
-        if options.detect_monitor_resolution then
-            display.original_width, display.original_height = getDisplayResolution()
-        end
-
-        display.original_fps = math.floor(mp.get_property_number('display-fps'))
-        msg.log('v', 'saving original fps: ' .. display.original_fps)
-    end
-end
-
---modifies the properties of the video to work with nircmd
-function modifyVideoProperties()
-    --Floor is used because 23fps video has an actual frate of ~23.9
-    display.new_fps = math.floor(display.new_fps)
-
-    display.new_width, display.new_height = getModifiedWidthHeight(display.new_width, display.new_height)
-end
-
+--chooses a width and height to switch the display to based on the resolution of the video
 function getModifiedWidthHeight(width, height)
 
-    if (options.UHD_adaptive ~= true) then
-        height = display.original_height
-        width = display.original_width
-        
+    --if UHD adaptive is disabled then it doesn't matter what the video resolution is it'll just use the current resolution
+    if (options.UHD_adaptive == false) then
+        height = var.original_height
+        width = var.original_width
+        goto functionend
+    end
     --sets the monitor to 2160p if an UHD video is played, otherwise set to the default
-    elseif (height < 1440) then
-        height = display.original_height
-        width = display.original_width
+    if (height < 1440) then
+        height = var.original_height
+        width = var.original_width
     else
         height = 2160
         width = 3840
     end
-    msg.log('v', "setting display to: " .. width .. "x" .. height)
 
+    ::functionend::
+    msg.verbose( "setting display to: " .. width .. "x" .. height)
     return width, height
-end
-
---reverts the monitor to its original refresh rate
-function revertRefresh()
-    if (display.beenReverted == false) then
-        msg.log('v', "reverting refresh rate")
-
-        local rate = findValidRate(display.original_fps)
-        changeRefresh(display.original_width, display.original_height, rate)
-        display.beenReverted = true
-    else
-        msg.log('v', "aborting reversion, display has not been changed")
-    end
 end
 
 --toggles between using estimated and specified fps
@@ -332,7 +264,7 @@ function toggleFpsType()
     local script_opts = mp.get_property("options/script-opts")
     
     if (string.find(script_opts, "changerefresh%-estimated_fps=") == nil) then
-        msg.log('v', 'toggling estimated fps - no script-opt found adding option')
+        msg.verbose( 'toggling estimated fps - no script-opt found adding option')
         script_opts = script_opts .. ",changerefresh-estimated_fps=no"
     end
 
@@ -340,12 +272,12 @@ function toggleFpsType()
         script_opts = script_opts:gsub("changerefresh%-estimated_fps=yes", "changerefresh%-estimated_fps=no")
 
         mp.commandv("show-text", "[Change-Refresh] now using container fps")
-        msg.log('info', "now using container fps")
+        msg.info( "now using container fps")
     else
         script_opts = script_opts:gsub("changerefresh%-estimated_fps=no", "changerefresh%-estimated_fps=yes")
 
         mp.commandv("show-text", "[Change-Refresh] now using estimated fps")
-        msg.log('info', "now using estimated fps")
+        msg.info( "now using estimated fps")
     end
     
     --the script is observing the scipt-opts property, so it will automatically update options after this line is run
@@ -360,8 +292,8 @@ function findValidRate(rate)
 
     --picks either the same fps in the whitelist, or the next highest
     --if none of the whitelisted rates are higher, then it uses the highest
-    for i = 1, #display.rateList, 1 do
-        closestRate = display.rateList[i]
+    for i = 1, #var.rateList, 1 do
+        closestRate = var.rateList[i]
         msg.debug('comparing ' .. closestRate .. ' to ' .. rate)
         if (closestRate >= rate) then
             break
@@ -375,39 +307,78 @@ end
 function matchVideo()
     --if the change is executed on a different monitor to the previous, and the previous monitor has not been been reverted
     --then revert the previous changes before changing the new monitor
-    if ((display.beenReverted == false) and (display.name ~= mp.get_property('display-names'))) then
+    if ((var.beenReverted == false) and (var.dname ~= mp.get_property('display-names'))) then
         revertRefresh()
     end
 
-    --records the current monitor prperties and video properties
-    recordDisplayProperties()
-    recordVideoProperties()
-    modifyVideoProperties()
+    --finds and records the display name
+    findDisplayNumber()
+
+    --if beenReverted=true, then the current display settings may not be saved
+    if (var.beenReverted == true) then
+        --saves the actual resolution only if option set, otherwise uses the defaults
+        if options.detect_monitor_resolution then
+            var.original_width, var.original_height = getDisplayResolution()
+        end
+
+        var.original_fps = math.floor(mp.get_property_number('display-fps'))
+        msg.verbose( 'saving original fps: ' .. var.original_fps)
+    end
+
+    --records video properties
+    var.new_width = mp.get_property_number('dwidth')
+    var.new_height = mp.get_property_number('dheight')
+    msg.verbose( "video resolution = " .. tostring(var.new_width) .. "x" .. tostring(var.new_height))
+
+    --saves either the estimated or specified fps of the video
+    if (options.estimated_fps == true) then
+        var.new_fps = mp.get_property_number('estimated-vf-fps')
+    else
+        var.new_fps = mp.get_property_number('container-fps')
+    end
+    
+    --Floor is used because 23fps video has an actual framerate of ~23.9, this occurs across many video rates
+    var.new_fps = math.floor(var.new_fps)
+    var.new_width, var.new_height = getModifiedWidthHeight(var.new_width, var.new_height)
 
     --picks which whitelisted rate to switch the monitor to based on the video rate
-    local rate = findValidRate(display.new_fps)
+    local rate = findValidRate(var.new_fps)
 
     --if the user has set a custom display rate for the video rate, then rate is changed to the new one
-    msg.verbose('saved display rate for ' .. rate .. ' is ' .. display.rates[rate])
-    rate = display.rates[rate]
+    msg.verbose('saved display rate for ' .. rate .. ' is ' .. var.rates[rate])
+    rate = var.rates[rate]
 
-    changeRefresh(display.new_width, display.new_height, rate)
+    changeRefresh(var.new_width, var.new_height, rate)
 end
 
---sets the current (intended not actual) resoluting and refresh as the default to use upon reversion
-function setDefault()
-    display.original_width, display.original_height = getDisplayResolution()
-    display.original_fps = math.floor(mp.get_property_number('display-fps'))
+--reverts the monitor to its original refresh rate
+function revertRefresh()
+    if (var.beenReverted == false) then
+        msg.verbose( "reverting refresh rate")
 
-    display.beenReverted = true
+        local rate = findValidRate(var.original_fps)
+        changeRefresh(var.original_width, var.original_height, rate)
+        var.beenReverted = true
+    else
+        msg.verbose( "aborting reversion, display has not been changed")
+    end
+end
+
+--sets the current resolution and refresh as the default to use upon reversion
+function setDefault()
+    var.original_width, var.original_height = getDisplayResolution()
+    var.original_fps = math.floor(mp.get_property_number('display-fps'))
+
+    var.beenReverted = true
 
     --logging change to OSD & the console
-    msg.log('info', 'set ' .. display.original_width .. "x" .. display.original_height .. " " .. display.original_fps .. "Hz as defaut display rate")
-    mp.commandv('show-text', 'Change-Refresh: set ' .. display.original_width .. "x" .. display.original_height .. " " .. display.original_fps .. "Hz as defaut display rate")
+    msg.info( 'set ' .. var.original_width .. "x" .. var.original_height .. " " .. var.original_fps .. "Hz as defaut display rate")
+    mp.commandv('show-text', 'Change-Refresh: set ' .. var.original_width .. "x" .. var.original_height .. " " .. var.original_fps .. "Hz as defaut display rate")
 end
 
+--function for script message custom changes
 function customChange(width, height, rate)
-    findDisplayName()
+    findDisplayNumber()
     changeRefresh(width, height, rate)
 end
 
@@ -425,16 +396,16 @@ end
 updateOptions()
 
 --key tries to changeRefresh current display to match video fps
-mp.add_key_binding(options.change_refresh_key, "change_refresh_rate", matchVideo)
+mp.add_key_binding("f10", "change_refresh_rate", matchVideo)
 
 --key reverts monitor to original refreshrate
-mp.add_key_binding(options.revert_refresh_key, "revert_refresh_rate", revertRefresh)
+mp.add_key_binding("Ctrl+f10", "revert_refresh_rate", revertRefresh)
 
 --ket to switch between using estimated and specified fps property
-mp.add_key_binding(options.toggle_fps_key, "toggle_fps_type", toggleFpsType)
+mp.add_key_binding("", "toggle_fps_type", toggleFpsType)
 
 --key to set the current resolution and refresh rate as the default
-mp.add_key_binding(options.set_default_key, "set_default_refresh_rate", setDefault)
+mp.add_key_binding("", "set_default_refresh_rate", setDefault)
 
 --sends a command to switch to the specified display rate
 --syntax is: script-message set-display-rate [width] [height] [fps]
