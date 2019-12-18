@@ -460,7 +460,10 @@ mp.add_key_binding("", "set_default_refresh_rate", setDefault)
 
 --sends a command to switch to the specified display rate
 --syntax is: script-message set-display-rate [width] [height] [fps]
-mp.register_script_message("set-display-rate", changeCurrentDisplay)
+mp.register_script_message("change-refresh", changeCurrentDisplay)
+
+--reverts the refresh
+mp.register_script_message("revert-refresh", revertRefresh)
 
 --updates options from script-opts whenever script-opts changes
 mp.observe_property("options/script-opts", nil, updateOptions)
