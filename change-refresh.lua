@@ -72,6 +72,8 @@ var = {
     dnumber = "",
     original_width = options.original_width,
     original_height = options.original_height,
+    current_width = "",
+    current_height = "",
     bdepth = "32",
     original_fps = "60",
     new_fps = "",
@@ -146,17 +148,26 @@ function updateTable()
     end
 end
 
+--saves the current width of the display
+--this value is only stored until the changeRefresh function returns
+--this is because the current res information is required at different points for different commands and to find
+--the res the player has to switch into and out of fullscreen. Doing so multiple times would be annoying, so
+--this function makes sure it will only happen once, no matter what command is sent
+function setCurrentRes()
+    if options.detect_monitor_resolution and var.current_width == "" then
+        var.current_width, var.current_height = getDisplayResolution()
+    elseif var.current_width == "" then
+        var.current_width, var.current_height = options.original_width, options.original_height
+    end
+end
+
 --finds information about the current display and detects if it needs to save settings or call revert refresh
---checks if the new display rate and res are already set, and aborts the change if so
 --afterwards it passes all the information to the changeRefresh function
 function changeCurrentDisplay(width, height, rate)
     local dname, dnumber = getDisplayDetails()
     width = tostring(width)
     height = tostring(height)
     rate = tostring(rate)
-
-    local currentRefresh = math.floor(mp.get_property_number('display-fps'))
-    msg.verbose('current refresh = ' .. currentRefresh)
 
     --if the change is executed on a different monitor to the previous, and the previous monitor has not been been reverted
     --then revert the previous changes before changing the new monitor
@@ -165,28 +176,18 @@ function changeCurrentDisplay(width, height, rate)
         revertRefresh()
     end
 
-    --finds the current width and height of the video
-    if options.detect_monitor_resolution then
-        current_width, current_height = getDisplayResolution()
-    end
+    setCurrentRes()
 
     --if beenReverted=true, then the current display settings may not be saved
     if (var.beenReverted == true) then
         --saves the actual resolution only if option set, otherwise uses the defaults
         if options.detect_monitor_resolution then
-            var.original_width, var.original_height = current_width, current_height
+            msg.verbose('saving original resolution: ' .. var.current_width .. 'x' .. var.current_height)
+            var.original_width, var.original_height = var.current_width, var.current_height
         end
 
         var.original_fps = math.floor(mp.get_property_number('display-fps'))
         msg.verbose('saving original fps: ' .. var.original_fps)
-    end
-
-    --tests if the display is already at the required rate and detect_monitor_resolution
-    --if detect_monitor_resolution is disabled then it won't ever run
-    if (rate == tostring(findValidRate(currentRefresh)) and (dnumber == var.dnumber or var.dnumber == "") and width == current_width and height == current_height) then
-        msg.verbose('monitor already at target refresh and resolution, aborting change')
-        mp.commandv("show-text", "changing monitor " .. var.dnumber .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
-        return
     end
 
     --saves the current name and dumber for next time
@@ -197,10 +198,26 @@ function changeCurrentDisplay(width, height, rate)
 end
 
 --calls nircmd to change the display resolution and rate
+--checks if the new display rate and res are already set, and aborts the change if so
 function changeRefresh(width, height, rate, display)
     rate = tostring(rate)
+    local currentRefresh = math.floor(mp.get_property_number('display-fps'))
+    msg.verbose('current refresh = ' .. currentRefresh)
+    setCurrentRes()
 
-    msg.verbose('calling nircmd with command: ' .. options.nircmd)
+    msg.debug('rate: ' .. rate .. ' currentRefresh: ' .. currentRefresh)
+    msg.debug('display: ' .. display .. ' saved display: ' .. var.dnumber)
+    msg.debug(('res: ' .. width .. 'x' .. height .. ' current res: ' .. var.current_width .. 'x' .. var.current_height))
+
+    --tests if the display is already at the required rate and detect_monitor_resolution
+    --if detect_monitor_resolution is disabled then it won't ever run
+    if (rate == tostring(findValidRate(currentRefresh)) and (display == var.dnumber or var.dnumber == "") and width == var.current_width and height == var.current_height) then
+        msg.verbose('monitor already at target refresh and resolution, aborting change')
+        mp.commandv("show-text", "changing monitor " .. var.dnumber .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
+        goto changeend
+    end
+
+    msg.verbose('calling nircmd with command: ' .. options.nircmd .. " setdisplay monitor:" .. display .. " " .. width .. " " .. height .. " " .. var.bdepth .. " " .. rate)
 
     msg.info("changing display " .. display .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
 
@@ -224,13 +241,18 @@ function changeRefresh(width, height, rate, display)
     --waits 3 seconds before continuing or until eof/player exit
     while (mp.get_time() - time < 3 and mp.get_property_bool("eof-reached") == false)
     do
-        mp.commandv("show-text", "changing monitor " .. var.dnumber .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
+        mp.commandv("show-text", "changing display " .. var.dnumber .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
     end
     
     var.beenReverted = false
 
     --sets the video to the original pause state
     mp.set_property_bool("pause", isPaused)
+
+    ::changeend::
+
+    --clears the memory for the display resolution
+    var.current_width, var.current_height = "", ""
 end
 
 --finds the display resolution by going into fullscreen and grabbing the resolution of the OSD
@@ -243,7 +265,7 @@ function getDisplayResolution()
     local width = mp.get_property("osd-width")
     local height = mp.get_property("osd-height")
 
-    msg.verbose('original monitor resolution = ' .. tostring(width) .. 'x' .. tostring(height))
+    msg.verbose('current monitor resolution = ' .. tostring(width) .. 'x' .. tostring(height))
 
     mp.set_property_bool("fullscreen", isFullscreen)
 
@@ -284,6 +306,7 @@ end
 
 --chooses a width and height to switch the display to based on the resolution of the video
 function getModifiedWidthHeight(width, height)
+    setCurrentRes()
 
     --if UHD adaptive is disabled then it doesn't matter what the video resolution is it'll just use the current resolution
     if (options.UHD_adaptive == false) then
@@ -293,8 +316,8 @@ function getModifiedWidthHeight(width, height)
     end
     --sets the monitor to 2160p if an UHD video is played, otherwise set to the default
     if (height < 1440) then
-        height = var.original_height
-        width = var.original_width
+        height = var.current_height
+        width = var.current_width
     else
         height = 2160
         width = 3840
