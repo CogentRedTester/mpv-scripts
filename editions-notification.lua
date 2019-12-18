@@ -26,7 +26,7 @@ end
 --When this happens it resets the editionSwitching boolean and displays the original osd-playing-message.
 --This process is necessary because there seems to be no way to differentiate between a new file being loaded and a new edition being loaded
 function main()
-    local edition = mp.get_property_number('edition')
+    local edition = mp.get_property_number('current-edition')
 
     --resets editionSwitching boolean and sets the new filename
     if lastFilename ~= mp.get_property('filename') then
@@ -56,6 +56,6 @@ function changedFile()
     editionSwitching = false
 end
 
-mp.observe_property('edition', nil, editionChanged)
+mp.observe_property('current-edition', nil, editionChanged)
 
 mp.register_event('file-loaded', main)
