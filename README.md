@@ -8,6 +8,10 @@ Saves the original monitor resolution and reverts changes on exit and when hotke
 
 Full description in file.
 
+# coverart #
+Automatically scans the directory of the currently loaded file and loads any valid cover art into mpv as additional video tracks.
+Has options for selecting what file names and types are considered valid.
+
 # cycle-profile #
 Cycles through a list of profiles sent via a script message and prints the profile-desc to the OSD. More details at the top of the file
 
