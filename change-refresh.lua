@@ -201,20 +201,28 @@ end
 --checks if the new display rate and res are already set, and aborts the change if so
 function changeRefresh(width, height, rate, display)
     rate = tostring(rate)
-    local currentRefresh = math.floor(mp.get_property_number('display-fps'))
+    local currentRefresh = mp.get_property_number('display-fps')
+    msg.verbose('current refresh of display is ' .. currentRefresh)
+    msg.verbose('finding on whitelist...')
+
+    currentRefresh = tostring(findValidRate(math.floor(currentRefresh)))
     msg.verbose('current refresh = ' .. currentRefresh)
     setCurrentRes()
 
-    msg.debug('rate: ' .. rate .. ' currentRefresh: ' .. currentRefresh)
-    msg.debug('display: ' .. display .. ' saved display: ' .. var.dnumber)
-    msg.debug(('res: ' .. width .. 'x' .. height .. ' current res: ' .. var.current_width .. 'x' .. var.current_height))
+    msg.debug('new rate: ' .. rate .. ' current rate: ' .. currentRefresh)
+    msg.debug('new display: ' .. display .. ' saved display: ' .. var.dnumber)
+    msg.debug('new res: ' .. width .. 'x' .. height .. ' current res: ' .. var.current_width .. 'x' .. var.current_height)
 
     --tests if the display is already at the required rate and detect_monitor_resolution
-    --if detect_monitor_resolution is disabled then it won't ever run
-    if (rate == tostring(findValidRate(currentRefresh)) and (display == var.dnumber or var.dnumber == "") and width == var.current_width and height == var.current_height) then
+    --if detect_monitor_resolution is disabled and UHD_adaptive is enabled, then this statement will never run, because it has no way of knowing which res it is on
+    if ((options.UHD_adaptive and options.detect_monitor_resolution == false) == false and
+        rate == currentRefresh and (display == var.dnumber or var.dnumber == "") and
+        width == var.current_width and height == var.current_height) then
+
         msg.verbose('monitor already at target refresh and resolution, aborting change')
         mp.commandv("show-text", "changing monitor " .. var.dnumber .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
-        goto changeend
+        var.current_width, var.current_height = "", ""
+        return
     end
 
     msg.verbose('calling nircmd with command: ' .. options.nircmd .. " setdisplay monitor:" .. display .. " " .. width .. " " .. height .. " " .. var.bdepth .. " " .. rate)
@@ -248,8 +256,6 @@ function changeRefresh(width, height, rate, display)
 
     --sets the video to the original pause state
     mp.set_property_bool("pause", isPaused)
-
-    ::changeend::
 
     --clears the memory for the display resolution
     var.current_width, var.current_height = "", ""
@@ -364,7 +370,7 @@ function findValidRate(rate)
     --if none of the whitelisted rates are higher, then it uses the highest
     for i = 1, #var.rateList, 1 do
         closestRate = var.rateList[i]
-        msg.debug('comparing ' .. closestRate .. ' to ' .. rate)
+        msg.debug('comparing ' .. rate .. ' to ' .. closestRate)
         if (closestRate >= rate) then
             break
         end
