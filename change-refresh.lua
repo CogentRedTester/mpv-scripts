@@ -2,31 +2,33 @@
 This script uses nircmd to change the refresh rate of the display that the mpv window is currently open in
 This was written because I could not get autospeedwin to work :(
 
+The script uses a hotkey by default, but can be setup to run on startup, see the options below for more details
+
 If the display does not support the specified resolution or refresh rate it will silently fail
 If the video refresh rate does not match any on the whitelist it will pick the next highest.
 If the video fps is higher tha any on the whitelist it will pick the highest available
-The whitelist is specified via the script-opt rates. Valid rates are separated via semicolons, do not include spaces and list in asceding order.
-You can also set a custom display rate for individual video rates using a hyphen, for example:
-    script-opts=changerefresh-rates="23;24;25-50;30;60"
+The whitelist is specified via the script-opt 'rates'. Valid rates are separated via semicolons, do not include spaces and list in asceding order.
+    Example:    script-opts=changerefresh-rates="23;24;30;60"
+
+You can also set a custom display rate for individual video rates using a hyphen:
+    Example:    script-opts=changerefresh-rates="23;24;25-50;30;60"
 This will change the display to 23, 24, and 30 fps when playing videos in those same rates, but will change the display to 50 fps when
 playing videos in 25 Hz
 
-This script is idealy used with displays that support the full range of media refresh rates (23, 24, 25, 29, 30, 59, 60, etc)
-
 The script will keep track of the original refresh rate of the monitor and revert when either the
 correct keybind is pressed, or when mpv exits. The original rate needs to be included on the whitelist, but if the rate is
-hyphenated, it will ignore the switched rate and just use the original
+hyphenated it will ignore the switched rate and just use the original.
 
 The script is able to find the current resolution of the monitor and will always use those dimensions when switching refresh rates,
-however I have an UHD mode (UHD adaptive) hardcoded to use a resolution of 3840x2160p for videos with a height of > 1440 pixels.
+however I have an UHD mode (option is UHD_adaptive) hardcoded to use a resolution of 3840x2160p for videos with a height of > 1440 pixels.
 
-It is also possible to disable automatic monitor resolution detection and use manual values (see options below).
+It is possible to disable automatic resolution detection and use manual values (see options below).
 The detection is done via switching to fullscreen mode and grabbing the resolution of the OSD, so it can be disabled if one finds it annoying.
 
-you can also send refresh change commands using script messages:
+You can also send refresh change commands directly using script messages:
     script-message set-display-rate [width] [height] [rate]
 
-these manual changes bypass the whitelist and rate associations and are sent to nircmd directly, so make sure you send a valid integer
+These manual changes bypass the whitelist and rate associations and are sent to nircmd directly, so make sure you send a valid integer
 ]]--
 
 utils = require 'mp.utils'
