@@ -18,6 +18,14 @@ Cycles through a list of profiles sent via a script message and prints the profi
 # editions-notification #
 Prints a message on the OSD if editions are found in the file, and temporarily switches the osd-playing-message to the editions-list property when switching. This makes it easier to tell the number and names of the editions.
 
+# music-mode #
+Switches to a music profile when an audio file is being played and forces an update to the osc to allow for separate layouts for music, requires my modified osc.lua
+
+# osc #
+Identical to the script here: https://github.com/mpv-player/mpv/blob/master/player/lua/osc.lua
+
+However, I have added an extra function and script message to allow for changing the layout during runtime using profiles
+
 # autoload #
 Exactly the same as the script available here: https://github.com/mpv-player/mpv/blob/master/TOOLS/lua/autoload.lua
 
