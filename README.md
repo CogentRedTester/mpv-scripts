@@ -26,6 +26,9 @@ Identical to the script here: https://github.com/mpv-player/mpv/blob/master/play
 
 However, I have added an extra function and script message to allow for changing the layout during runtime using profiles
 
+# playlist-shuffle #
+shuffles the playlist and moves the current file to the start of the playlist
+
 # autoload #
 Exactly the same as the script available here: https://github.com/mpv-player/mpv/blob/master/TOOLS/lua/autoload.lua
 
