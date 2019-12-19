@@ -31,7 +31,6 @@ You can also send refresh change commands directly using script messages:
 These manual changes bypass the whitelist and rate associations and are sent to nircmd directly, so make sure you send a valid integer
 ]]--
 
-utils = require 'mp.utils'
 msg = require 'mp.msg'
 require 'mp.options'
 
@@ -236,8 +235,9 @@ function changeRefresh(width, height, rate, display)
     mp.set_property_bool("pause", true)
     
     local time = mp.get_time()
-    utils.subprocess({
-        ["cancellable"] = false,
+    mp.command_native({
+        ["name"] = 'subprocess',
+        ["playback_only"] = false,
         ["args"] = {
             [1] = options.nircmd,
             [2] = "setdisplay",
