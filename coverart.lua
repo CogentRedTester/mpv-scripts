@@ -14,7 +14,12 @@ local o = {
     load_all = false,
 
     --valid image extensions, same rules as the filenames option applies
-    imageExts = 'jpg;jpeg;png;bmp;gif'
+    imageExts = 'jpg;jpeg;png;bmp;gif',
+
+    --file path of a placeholder image to use if no cover art is found
+    --will only be used if force-window is enabled
+    --leaving it blank will be the same as disabling it
+    placeholder = ""
 }
 
 local filenames = {}
@@ -49,6 +54,15 @@ function processStrings()
     filenames = split(o.filenames)
     imageExts = split(o.imageExts)
 end
+
+function loadPlaceholder()
+    if o.placeholder == "" then return end
+
+    local path = mp.command_native({"expand-path", o.placeholder})
+    mp.commandv('video-add', path)
+    mp.set_property_number('window-scale', 0.5)
+end
+
 
 function checkForCoverart()
     --finds the local directory of the file
@@ -94,16 +108,20 @@ function checkForCoverart()
             msg.verbose(file .. ' found in whitelist - adding as extra video track...')
             local path = utils.join_path(directory, file)
 
-            --adds the new file to the playing list, 
-            mp.commandv('video-add', path, "auto")
-
+            --adds the new file to the playing list
             --if there is no video track currently selected then it autoloads track #1
             msg.verbose('current video track: ' .. mp.get_property('vid'))
             if mp.get_property('vid') == "no" then
-                msg.verbose('switching to track #1')
-                mp.set_property_number('vid', 1)
+                mp.commandv('video-add', path)
+            else
+                mp.commandv('video-add', path, "auto")
             end
         end
+    end
+
+    --loads a placeholder image if no covers were found and a window is forced
+    if mp.get_property('vid') == "no" and mp.get_property_bool('force-window') then
+        loadPlaceholder()
     end
 end
 
