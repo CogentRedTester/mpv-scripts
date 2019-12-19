@@ -2628,3 +2628,4 @@ function update_opts()
 end
 
 mp.register_script_message('update-osc-options', update_opts)
+mp.observe_property('options/script-opts',nil, update_opts)
