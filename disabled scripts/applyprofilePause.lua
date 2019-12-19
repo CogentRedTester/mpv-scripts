@@ -1,9 +1,9 @@
 function applyProfile (profile, message)
     
     if message == nil then
-        mp.commandv("show-text", "applying profile: " .. profile)
+        mp.osd_message("applying profile: " .. profile)
     else
-        mp.commandv("show-text", message)
+        mp.osd_message(message)
     end
 
     print("pause")

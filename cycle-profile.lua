@@ -69,7 +69,7 @@ function printProfileDesc(profile)
     end
 
     msg.verbose('profile description: ' .. desc)
-    mp.commandv('show-text', desc)
+    mp.osd_message(desc)
 end
 
 function main(profileStr)

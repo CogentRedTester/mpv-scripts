@@ -18,7 +18,7 @@ function showNotification()
     while (mp.get_time() - time < 1) do
 
     end
-    mp.commandv('show-text', 'file has ' .. editions .. ' editions', '2000')
+    mp.osd_message('file has ' .. editions .. ' editions', '2000')
 end
 
 --The script remembers the first time the edition is switched using mp.observe_property, and afterwards always displays the edition-list on each file-loaded

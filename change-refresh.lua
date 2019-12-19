@@ -221,7 +221,7 @@ function changeRefresh(width, height, rate, display)
         width == var.current_width and height == var.current_height) then
 
         msg.verbose('monitor already at target refresh and resolution, aborting change')
-        mp.commandv("show-text", "changing monitor " .. var.dnumber .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
+        mp.osd_message("changing monitor " .. var.dnumber .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
         var.current_width, var.current_height = "", ""
         return
     end
@@ -251,7 +251,7 @@ function changeRefresh(width, height, rate, display)
     --waits 3 seconds before continuing or until eof/player exit
     while (mp.get_time() - time < 3 and mp.get_property_bool("eof-reached") == false)
     do
-        mp.commandv("show-text", "changing display " .. var.dnumber .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
+        mp.osd_message("changing display " .. var.dnumber .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
     end
     
     var.beenReverted = false
@@ -340,11 +340,11 @@ end
 function toggleFpsType()
     if options.estimated_fps then
         options.estimated_fps = false
-        mp.commandv("show-text", "[Change-Refresh] now using container fps")
+        mp.osd_message("[Change-Refresh] now using container fps")
         msg.info("now using container fps")
     else
         options.estimated_fps = true
-        mp.commandv("show-text", "[Change-Refresh] now using estimated fps")
+        mp.osd_message("[Change-Refresh] now using estimated fps")
         msg.info("now using estimated fps")
     end
     return
@@ -408,7 +408,7 @@ function revertRefresh()
         var.beenReverted = true
     else
         msg.verbose("aborting reversion, display has not been changed")
-        mp.commandv('show-text', '[change-refresh] display has not been changed')
+        mp.osd_message('[change-refresh] display has not been changed')
     end
 end
 
@@ -421,7 +421,7 @@ function setDefault()
 
     --logging change to OSD & the console
     msg.info('set ' .. var.original_width .. "x" .. var.original_height .. " " .. var.original_fps .. "Hz as defaut display rate")
-    mp.commandv('show-text', 'Change-Refresh: set ' .. var.original_width .. "x" .. var.original_height .. " " .. var.original_fps .. "Hz as defaut display rate")
+    mp.osd_message('Change-Refresh: set ' .. var.original_width .. "x" .. var.original_height .. " " .. var.original_fps .. "Hz as defaut display rate")
 end
 
 --runs the script automatically on startup if option is enabled

@@ -49,7 +49,7 @@ local locked = false
 function musicMode()
     msg.verbose('extension in whitelist, applying profile "' .. o.profile .. '"')
     mp.commandv('apply-profile', o.profile)
-    mp.commandv('show-text', 'Music Mode enabled')
+    mp.osd_message('Music Mode enabled')
 
     inMusicMode = true
 end
@@ -58,7 +58,7 @@ end
 function deactivate()
     msg.verbose('extension not in whitelist, applying undo profile "' .. o.undo_profile .. '"')
     mp.commandv('apply-profile', o.undo_profile)
-    mp.commandv('show-text', 'Music Mode disabled')
+    mp.osd_message('Music Mode disabled')
 
     inMusicMode = false
 end
@@ -106,11 +106,11 @@ function lock()
     if locked then
         locked = false
         msg.info('music mode unlocked')
-        mp.commandv('show-text', 'music mode unlocked')
+        mp.osd_message('music mode unlocked')
     else
         locked = true
         msg.info('music mode locked')
-        mp.commandv('show-text', 'music mode locked')
+        mp.osd_message('music mode locked')
     end
 end
 

@@ -219,7 +219,7 @@ end
 
 function autoload_keybind()
     find_and_add_entries()
-    mp.commandv("show-text", "autoloading playlist from directory")
+    mp.osd_message("autoloading playlist from directory")
 end
 
 mp.add_key_binding('Ctrl+F8', "autoload-playlist", autoload_keybind)
