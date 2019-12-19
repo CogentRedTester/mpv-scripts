@@ -337,29 +337,17 @@ function getModifiedWidthHeight(width, height)
 end
 
 --toggles between using estimated and specified fps
---does so by modifying the script-opt list and reloading options
 function toggleFpsType()
-    local script_opts = mp.get_property("options/script-opts")
-    
-    if (string.find(script_opts, "changerefresh%-estimated_fps=") == nil) then
-        msg.verbose('toggling estimated fps - no script-opt found adding option')
-        script_opts = script_opts .. ",changerefresh-estimated_fps=no"
-    end
-
-    if (options.estimated_fps == true) then
-        script_opts = script_opts:gsub("changerefresh%-estimated_fps=yes", "changerefresh%-estimated_fps=no")
-
+    if options.estimated_fps then
+        options.estimated_fps = false
         mp.commandv("show-text", "[Change-Refresh] now using container fps")
         msg.info("now using container fps")
     else
-        script_opts = script_opts:gsub("changerefresh%-estimated_fps=no", "changerefresh%-estimated_fps=yes")
-
+        options.estimated_fps = true
         mp.commandv("show-text", "[Change-Refresh] now using estimated fps")
         msg.info("now using estimated fps")
     end
-    
-    --the script is observing the scipt-opts property, so it will automatically update options after this line is run
-    mp.set_property("options/script-opts", script_opts)
+    return
 end
 
 --picks which whitelisted rate to switch the monitor to
@@ -420,6 +408,7 @@ function revertRefresh()
         var.beenReverted = true
     else
         msg.verbose("aborting reversion, display has not been changed")
+        mp.commandv('show-text', '[change-refresh] display has not been changed')
     end
 end
 
@@ -455,7 +444,7 @@ mp.add_key_binding("f10", "change_refresh_rate", matchVideo)
 mp.add_key_binding("Ctrl+f10", "revert_refresh_rate", revertRefresh)
 
 --ket to switch between using estimated and specified fps property
-mp.add_key_binding("", "toggle_fps_type", toggleFpsType)
+mp.register_script_message('toggle_fps_type', toggleFpsType)
 
 --key to set the current resolution and refresh rate as the default
 mp.add_key_binding("", "set_default_refresh_rate", setDefault)
