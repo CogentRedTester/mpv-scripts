@@ -75,7 +75,9 @@ function main()
 
     --if the extension is a valid audio extension then it switches to music mode
     if inTable(ext, exts) then
-        musicMode()
+        if inMusicMode == false then
+            musicMode()
+        end
     elseif o.undo_profile ~= "" and musicMode then
         deactivate()
     else
