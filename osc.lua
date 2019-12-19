@@ -2617,3 +2617,13 @@ mp.add_key_binding(nil, "visibility", function() visibility_mode("cycle") end)
 
 set_virt_mouse_area(0, 0, 0, 0, "input")
 set_virt_mouse_area(0, 0, 0, 0, "window-controls")
+
+
+--automatically generated function to update options
+function update_opts()
+    opt.read_options(user_opts, 'osc')
+    visibility_mode(user_opts.visibility, true)
+    request_init()
+end
+
+mp.register_script_message('update-osc-options', update_opts)
