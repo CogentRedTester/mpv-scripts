@@ -43,6 +43,24 @@ local exts = split(o.exts)
 --to prevent superfluous loading of profiles the script keeps track of when music mode is enabled
 local inMusicMode = false
 
+local reversed = false
+
+function musicMode()
+    msg.verbose('extension in whitelist, applying profile "' .. o.profile .. '"')
+    mp.commandv('apply-profile', o.profile)
+    mp.commandv('show-text', 'Music Mode enabled')
+
+    inMusicMode = true
+end
+
+function deactivate()
+    msg.verbose('extension not in whitelist, applying undo profile "' .. o.undo_profile .. '"')
+    mp.commandv('apply-profile', o.undo_profile)
+    mp.commandv('show-text', 'Music Mode disabled')
+
+    inMusicMode = false
+end
+
 function main()
     --finds the filename
     local filename = mp.get_property('filename')
@@ -55,18 +73,35 @@ function main()
 
     --if the extension is a valid audio extension then it switches to music mode
     if inTable(ext, exts) then
-        msg.verbose('extension in whitelist, applying profile "' .. o.profile .. '"')
-        mp.commandv('apply-profile', o.profile)
-
-        inMusicMode = true
-    elseif inMusicMode and o.undo_profile ~= "" then
-        msg.verbose('extension not in whitelist, applying undo profile "' .. o.undo_profile .. '"')
-        mp.commandv('apply-profile', o.undo_profile)
-
-        inMusicMode = false
+        if reversed == false then musicMode()
+        else deactivate() end
+    elseif o.undo_profile ~= "" then
+        if reversed == false and musicMode then deactivate()
+        else musicMode() end
     else
         msg.verbose('extension not in whitelist, doing nothing')
     end
 end
 
-mp.register_event('file-loaded', main)
+function fileLoaded()
+    if reversed == false then
+        main()
+    end
+end
+
+function overide()
+    if reversed then
+        reversed = false
+    else
+        reversed = true
+    end
+
+    main()
+end
+
+--reversed how the script treats music mode (audio files get video settings and video gets audi)
+--also prevents the new mode from being changed on file load
+--this is a toggle, so sending the message again changes back to usual behaviour
+mp.register_script_message('music-mode', overide)
+
+mp.register_event('file-loaded', fileLoaded)
