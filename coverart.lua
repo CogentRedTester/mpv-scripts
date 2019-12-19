@@ -17,16 +17,37 @@ local o = {
     imageExts = 'jpg;jpeg;png;bmp;gif'
 }
 
+local filenames = {}
+local imageExts = {}
+
+--splits the string into a table on the semicolons
+function split(inputstr)
+    local t={}
+    for str in string.gmatch(inputstr, "([^;]+)") do
+            table.insert(t, str)
+    end
+    return t
+end
+
+--returns true if the variable exists in the table
+function inTable(var, table)
+    for i = 1, #table, 1 do
+        if (var == table[i]) then
+            return true
+        end
+    end
+    return false
+end
+
 --processes the option strings to ensure they work with the script
 function processStrings()
     --sets everything to lowercase to avoid confusion
     o.filenames = string.lower(o.filenames)
     o.imageExts = string.lower(o.imageExts)
 
-    --wraps the string in semicolons because the algorithm looks for a string bracketted by semicolons
-    --if the string isn't wrapped then the first and last entries may not work
-    o.imageExts = ";" .. o.imageExts .. ";"
-    o.filenames = ";" .. o.filenames .. ";"
+    --splits the strings into tables
+    filenames = split(o.filenames)
+    imageExts = split(o.imageExts)
 end
 
 function checkForCoverart()
@@ -69,7 +90,7 @@ function checkForCoverart()
         end
 
         --if the name matches one in the whitelist
-        if (o.filenames:match(';' .. file .. ';') or (o.load_all and o.imageExts:match(";" .. fileext .. ";"))) then
+        if inTable(file, filenames) or (o.load_all and inTable(fileext, imageExts)) then
             msg.verbose(file .. ' found in whitelist - adding as extra video track...')
             local path = utils.join_path(directory, file)
 
