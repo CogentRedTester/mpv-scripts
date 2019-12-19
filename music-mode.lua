@@ -43,8 +43,9 @@ local exts = split(o.exts)
 --to prevent superfluous loading of profiles the script keeps track of when music mode is enabled
 local inMusicMode = false
 
-local reversed = false
+local locked = false
 
+--enabled music mode
 function musicMode()
     msg.verbose('extension in whitelist, applying profile "' .. o.profile .. '"')
     mp.commandv('apply-profile', o.profile)
@@ -53,6 +54,7 @@ function musicMode()
     inMusicMode = true
 end
 
+--disables music mode
 function deactivate()
     msg.verbose('extension not in whitelist, applying undo profile "' .. o.undo_profile .. '"')
     mp.commandv('apply-profile', o.undo_profile)
@@ -73,35 +75,50 @@ function main()
 
     --if the extension is a valid audio extension then it switches to music mode
     if inTable(ext, exts) then
-        if reversed == false then musicMode()
-        else deactivate() end
-    elseif o.undo_profile ~= "" then
-        if reversed == false and musicMode then deactivate()
-        else musicMode() end
+        musicMode()
+    elseif o.undo_profile ~= "" and musicMode then
+        deactivate()
     else
         msg.verbose('extension not in whitelist, doing nothing')
     end
 end
 
+--runs when the file is loaded, if script is locked it will do nothing
 function fileLoaded()
-    if reversed == false then
+    if locked == false then
         main()
     end
 end
-
-function overide()
-    if reversed then
-        reversed = false
+ 
+--toggles music mode
+function toggle()
+    if inMusicMode then
+        deactivate()
     else
-        reversed = true
+        musicMode()
     end
-
-    main()
 end
 
---reversed how the script treats music mode (audio files get video settings and video gets audi)
---also prevents the new mode from being changed on file load
---this is a toggle, so sending the message again changes back to usual behaviour
-mp.register_script_message('music-mode', overide)
+--toggles lock
+function lock()
+    if locked then
+        locked = false
+        msg.info('music mode unlocked')
+        mp.commandv('show-text', 'music mode unlocked')
+    else
+        locked = true
+        msg.info('music mode locked')
+        mp.commandv('show-text', 'music mode locked')
+    end
+end
+
+--toggles music mode on and off
+mp.register_script_message('music-mode-toggle', toggle)
+
+--stops the script from switching modes on file loads
+mp.register_script_message('music-mode-lock', lock)
+
+--switches music mode on
+mp.register_script_message('music-mode', musicMode)
 
 mp.register_event('file-loaded', fileLoaded)
