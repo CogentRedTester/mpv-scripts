@@ -54,7 +54,7 @@ function main()
     msg.verbose('extracted extension: ' .. ext)
 
     --if the extension is a valid audio extension then it switches to music mode
-    if inTable(ext, exts) and inMusicMode == false then
+    if inTable(ext, exts) then
         msg.verbose('extension in whitelist, applying profile "' .. o.profile .. '"')
         mp.commandv('apply-profile', o.profile)
 

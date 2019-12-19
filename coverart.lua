@@ -60,7 +60,6 @@ function loadPlaceholder()
 
     local path = mp.command_native({"expand-path", o.placeholder})
     mp.commandv('video-add', path)
-    mp.set_property_number('window-scale', 0.5)
 end
 
 
