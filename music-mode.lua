@@ -78,7 +78,7 @@ function main()
         if inMusicMode == false then
             musicMode()
         end
-    elseif o.undo_profile ~= "" and musicMode then
+    elseif o.undo_profile ~= "" and inMusicMode then
         deactivate()
     else
         msg.verbose('extension not in whitelist, doing nothing')
