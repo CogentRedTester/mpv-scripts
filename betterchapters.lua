@@ -1,4 +1,10 @@
-local utils = require 'mp.utils'
+--a combination of two scripts:
+----betterchapters: https://github.com/mpv-player/mpv/issues/4738#issuecomment-321298846
+----nextfile: https://github.com/jonniek/mpv-nextfile
+--this script runs the nextfile commands when there is only one item in the playlist
+
+utils = require 'mp.utils'
+
 local settings = {
 
     --filetypes,{'mp4','mkv'} for specific or {''} for all filetypes
@@ -98,5 +104,47 @@ function movetofile(forward)
     end
 end
 
-mp.add_key_binding('shift+RIGHT', 'nextfile', nexthandler)
-mp.add_key_binding('shift+LEFT', 'previousfile', prevhandler)
+local playlist
+
+function playlistUpdate()
+    if mp.get_property_number('playlist-count') > 1 then
+        playlist = false
+    else
+        playlist = true
+    end
+end
+
+function chapter_seek(direction)
+    local chapters = mp.get_property_number("chapters")
+    if chapters == nil then chapters = 0 end
+    local chapter  = mp.get_property_number("chapter")
+    if chapter == nil then chapter = 0 end
+    if chapter+direction < 0 then
+
+        if playlist then
+            mp.command("playlist_prev")
+            mp.commandv("script-message", "osc-playlist")
+        else
+            prevhandler()
+        end
+    elseif chapter+direction >= chapters then
+
+        if playlist then
+            mp.command("playlist_next")
+            mp.commandv("script-message", "osc-playlist")
+        else
+            nexthandler()
+        end
+    else
+        mp.commandv("add", "chapter", direction)
+        mp.commandv("script-message", "osc-chapterlist")
+    end
+end
+
+mp.observe_property('playlist-count', playlistUpdate)
+
+mp.add_key_binding("PGUP", "chapter_next", function() chapter_seek(1) end)
+mp.add_key_binding("PGDWN", "chapter_prev", function() chapter_seek(-1) end)
+
+mp.add_key_binding('Ctrl+PGUP', 'nextfile', nexthandler)
+mp.add_key_binding('Ctrl+PGDWN', 'previousfile', prevhandler)
