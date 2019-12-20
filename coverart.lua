@@ -16,6 +16,9 @@ local o = {
     --valid image extensions, same rules as the filenames option applies
     imageExts = 'jpg;jpeg;png;bmp;gif',
 
+    --only loads cover art when playing files with the following extensions:
+    audioExts = 'mp3;wav;ogm;flac;m4a;wma;ogg;opus;alac;mka',
+
     --file path of a placeholder image to use if no cover art is found
     --will only be used if force-window is enabled
     --leaving it blank will be the same as disabling it
@@ -24,6 +27,7 @@ local o = {
 
 local filenames = {}
 local imageExts = {}
+local audioExts = {}
 
 --splits the string into a table on the semicolons
 function split(inputstr)
@@ -49,10 +53,12 @@ function processStrings()
     --sets everything to lowercase to avoid confusion
     o.filenames = string.lower(o.filenames)
     o.imageExts = string.lower(o.imageExts)
+    o.audioExts = string.lower(o.audioExts)
 
     --splits the strings into tables
     filenames = split(o.filenames)
     imageExts = split(o.imageExts)
+    audioExts = split(o.audioExts)
 end
 
 function loadPlaceholder()
@@ -83,6 +89,10 @@ function checkForCoverart()
     local directory, filename = utils.split_path(path)
     msg.verbose('directory: ' .. directory)
     msg.verbose('file: ' .. filename)
+
+    --does not look for cover art if the file is not an adu
+    local ext = filename:sub(filename:find([[.[^.]*$]]) + 1)
+    if inTable(ext, audioExts) == false then return end
 
     --loads the files from the directory
     files = utils.readdir(directory, "files")
