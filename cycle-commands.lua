@@ -9,7 +9,7 @@
         
         script-message cycle-commands "show-text one 1000 ;  print-text two | show-text three_four"
     
-    This would print 'one' to the OSD for 1 second and 'two' to the console on keypress one and 'three four' to the OSD for 3 seconds on keypress two
+    This would, on keypress one, print 'one' to the OSD for 1 second and 'two' to the console, on keypress two 'three four' would be printed to the OSD
 
     There are no limits to the number of commands, and the script message can be used as often as one wants, the script stores the current iteration
     for each unique cycle command, so there should be no overlap unless one binds the exact same command string (including spacing)
@@ -35,7 +35,7 @@ o = {
     wordSeperator = ' ',
 
     --replaces spaces in command
-    --necessary if one want to use multi-word strings, and spaces are set as the word seperator (default)
+    --necessary if one want to use multi-word strings and spaces are set as the word seperator (default)
     replace_space_char = '_'
 }
 
