@@ -41,17 +41,17 @@ end
 local exts = split(o.exts)
 
 --to prevent superfluous loading of profiles the script keeps track of when music mode is enabled
-local inMusicMode = false
+local musicMode = false
 
 local locked = false
 
 --enabled music mode
-function musicMode()
+function activate()
     msg.verbose('extension in whitelist, applying profile "' .. o.profile .. '"')
     mp.commandv('apply-profile', o.profile)
     mp.osd_message('Music Mode enabled')
 
-    inMusicMode = true
+    musicMode = true
 end
 
 --disables music mode
@@ -60,7 +60,7 @@ function deactivate()
     mp.commandv('apply-profile', o.undo_profile)
     mp.osd_message('Music Mode disabled')
 
-    inMusicMode = false
+    musicMode = false
 end
 
 function main()
@@ -75,8 +75,8 @@ function main()
 
     --if the extension is a valid audio extension then it switches to music mode
     if inTable(ext, exts) then
-        if inMusicMode == false then
-            musicMode()
+        if musicMode == false then
+            activate()
         end
     elseif o.undo_profile ~= "" and musicMode then
         deactivate()
@@ -94,10 +94,10 @@ end
  
 --toggles music mode
 function toggle()
-    if inMusicMode then
+    if musicMode then
         deactivate()
     else
-        musicMode()
+        activate()
     end
 end
 
@@ -121,6 +121,6 @@ mp.register_script_message('music-mode-toggle', toggle)
 mp.register_script_message('music-mode-lock', lock)
 
 --switches music mode on
-mp.register_script_message('music-mode', musicMode)
+mp.register_script_message('music-mode', activate)
 
 mp.register_event('file-loaded', fileLoaded)
