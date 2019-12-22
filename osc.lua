@@ -49,30 +49,8 @@ local user_opts = {
     windowcontrols_alignment = "right" -- which side to show window controls on
 }
 
--- read_options may modify hidetimeout, so save the original default value in
--- case the user set hidetimeout < 0 and we need the default instead.
-local hidetimeout_def = user_opts.hidetimeout
 -- read options from config and command-line
-opt.read_options(user_opts, "osc")
-if user_opts.hidetimeout < 0 then
-    user_opts.hidetimeout = hidetimeout_def
-    msg.warn("hidetimeout cannot be negative. Using " .. user_opts.hidetimeout)
-end
-
--- validate window control options
-if user_opts.windowcontrols ~= "auto" and
-   user_opts.windowcontrols ~= "yes" and
-   user_opts.windowcontrols ~= "no" then
-    msg.warn("windowcontrols cannot be \"" ..
-             user_opts.windowcontrols .. "\". Ignoring.")
-    user_opts.windowcontrols = "auto"
-end
-if user_opts.windowcontrols_alignment ~= "right" and
-   user_opts.windowcontrols_alignment ~= "left" then
-    msg.warn("windowcontrols_alignment cannot be \"" ..
-             user_opts.windowcontrols_alignment .. "\". Ignoring.")
-    user_opts.windowcontrols_alignment = "right"
-end
+opt.read_options(user_opts, "osc", function(list) update_options(list) end)
 
 local osc_param = { -- calculated by osc_init()
     playresy = 0,                           -- canvas size Y
@@ -126,8 +104,10 @@ local state = {
     message_text,
     message_timeout,
     fullscreen = false,
-    timer = nil,
-    cache_idle = false,
+    tick_timer = nil,
+    tick_last_time = 0,                     -- when the last tick() was run
+    hide_timer = nil,
+    cache_state = nil,
     idle = false,
     enabled = true,
     input_enabled = true,
@@ -139,7 +119,7 @@ local state = {
 }
 
 local window_control_box_width = 80
-
+local tick_delay = 0.03
 
 --
 -- Helperfunctions
@@ -1643,8 +1623,29 @@ function validate_user_opts()
         msg.warn("Using \"slider\" seekrangestyle together with \"bar\" seekbarstyle is not supported")
         user_opts.seekrangestyle = "inverted"
     end
+
+    if user_opts.windowcontrols ~= "auto" and
+       user_opts.windowcontrols ~= "yes" and
+       user_opts.windowcontrols ~= "no" then
+        msg.warn("windowcontrols cannot be \"" ..
+                user_opts.windowcontrols .. "\". Ignoring.")
+        user_opts.windowcontrols = "auto"
+    end
+    if user_opts.windowcontrols_alignment ~= "right" and
+       user_opts.windowcontrols_alignment ~= "left" then
+        msg.warn("windowcontrols_alignment cannot be \"" ..
+                user_opts.windowcontrols_alignment .. "\". Ignoring.")
+        user_opts.windowcontrols_alignment = "right"
+    end
 end
 
+function update_options(list)
+    validate_user_opts()
+    request_tick()
+    if list["visibility"] then
+        visibility_mode(user_opts.visibility, true)
+    end
+end
 
 -- OSC INIT
 function osc_init()
@@ -1676,9 +1677,6 @@ function osc_init()
 
     -- stop seeking with the slider to prevent skipping files
     state.active_element = nil
-
-
-
 
     elements = {}
 
@@ -1900,7 +1898,7 @@ function osc_init()
         if user_opts.seekrangestyle == "none" then
             return nil
         end
-        local cache_state = mp.get_property_native("demuxer-cache-state", nil)
+        local cache_state = state.cache_state
         if not cache_state then
             return nil
         end
@@ -1909,14 +1907,17 @@ function osc_init()
             return nil
         end
         local ranges = cache_state["seekable-ranges"]
-        for _, range in pairs(ranges) do
-            range["start"] = 100 * range["start"] / duration
-            range["end"] = 100 * range["end"] / duration
-        end
         if #ranges == 0 then
             return nil
         end
-        return ranges
+        local nranges = {}
+        for _, range in pairs(ranges) do
+            nranges[#nranges + 1] = {
+                ["start"] = 100 * range["start"] / duration,
+                ["end"] = 100 * range["end"] / duration,
+            }
+        end
+        return nranges
     end
     ne.eventresponder["mouse_move"] = --keyframe seeking when mouse is dragged
         function (element)
@@ -1980,8 +1981,8 @@ function osc_init()
     ne = new_element("cache", "button")
 
     ne.content = function ()
-        local cache_state = mp.get_property_native("demuxer-cache-state", {})
-        if not (cache_state["seekable-ranges"] and
+        local cache_state = state.cache_state
+        if not (cache_state and cache_state["seekable-ranges"] and
             #cache_state["seekable-ranges"] > 0) then
             -- probably not a network stream
             return ""
@@ -2058,6 +2059,7 @@ function osc_init()
         reset_margins()
     end
 
+    update_margins()
 end
 
 function reset_margins()
@@ -2067,6 +2069,24 @@ function reset_margins()
         end
         state.using_video_margins = false
     end
+end
+
+function update_margins()
+    local margins = osc_param.video_margins
+
+    -- Don't report margins if it's visible only temporarily. At least for
+    -- console.lua this makes no sense.
+    if (not state.osc_visible) or (get_hidetimeout() >= 0) then
+        margins = {l = 0, r = 0, t = 0, b = 0}
+    end
+
+    utils.shared_script_property_set("osc-margins",
+        string.format("%f,%f,%f,%f", margins.l, margins.r, margins.t, margins.b))
+end
+
+function shutdown()
+    reset_margins()
+    utils.shared_script_property_set("osc-margins", nil)
 end
 
 --
@@ -2095,12 +2115,11 @@ function hide_osc()
         -- typically hide happens at render() from tick(), but now tick() is
         -- no-op and won't render again to remove the osc, so do that manually.
         state.osc_visible = false
-        timer_stop()
         render_wipe()
     elseif (user_opts.fadeduration > 0) then
         if not(state.osc_visible == false) then
             state.anitype = "out"
-            control_timer()
+            request_tick()
         end
     else
         osc_visible(false)
@@ -2108,63 +2127,44 @@ function hide_osc()
 end
 
 function osc_visible(visible)
-    state.osc_visible = visible
-    control_timer()
+    if state.osc_visible ~= visible then
+        state.osc_visible = visible
+        update_margins()
+    end
+    request_tick()
 end
 
 function pause_state(name, enabled)
     state.paused = enabled
-    control_timer()
+    request_tick()
 end
 
-function cache_state(name, idle)
-    state.cache_idle = idle
-    control_timer()
+function cache_state(name, st)
+    state.cache_state = st
+    request_tick()
 end
 
-function control_timer()
-    if (state.paused) and (state.osc_visible) and
-        ( not(state.cache_idle) or not (state.anitype == nil) ) then
-
-        timer_start()
-    else
-        timer_stop()
+-- Request that tick() is called (which typically re-renders the OSC).
+-- The tick is then either executed immediately, or rate-limited if it was
+-- called a small time ago.
+function request_tick()
+    if state.tick_timer == nil then
+        state.tick_timer = mp.add_timeout(0, tick)
     end
-end
 
-function timer_start()
-    if not (state.timer_active) then
-        msg.trace("timer start")
-
-        if (state.timer == nil) then
-            -- create new timer
-            state.timer = mp.add_periodic_timer(0.03, tick)
-        else
-            -- resume existing one
-            state.timer:resume()
+    if not state.tick_timer:is_enabled() then
+        local now = mp.get_time()
+        local timeout = tick_delay - (now - state.tick_last_time)
+        if timeout < 0 then
+            timeout = 0
         end
-
-        state.timer_active = true
+        state.tick_timer.timeout = timeout
+        state.tick_timer:resume()
     end
 end
-
-function timer_stop()
-    if (state.timer_active) then
-        msg.trace("timer stop")
-
-        if not (state.timer == nil) then
-            -- kill timer
-            state.timer:kill()
-        end
-
-        state.timer_active = false
-    end
-end
-
-
 
 function mouse_leave()
-    if user_opts.hidetimeout >= 0 then
+    if get_hidetimeout() >= 0 then
         hide_osc()
     end
     -- reset mouse position
@@ -2294,11 +2294,23 @@ function render()
     end
 
     -- autohide
-    if not (state.showtime == nil) and (user_opts.hidetimeout >= 0)
-        and (state.showtime + (user_opts.hidetimeout/1000) < now)
-        and (state.active_element == nil) and not (mouse_over_osc) then
-
-        hide_osc()
+    if not (state.showtime == nil) and (get_hidetimeout() >= 0) then
+        local timeout = state.showtime + (get_hidetimeout()/1000) - now
+        if timeout <= 0 then
+            if (state.active_element == nil) and not (mouse_over_osc) then
+                hide_osc()
+            end
+        else
+            -- the timer is only used to recheck the state and to possibly run
+            -- the code above again
+            if not state.hide_timer then
+                state.hide_timer = mp.add_timeout(0, tick)
+            end
+            state.hide_timer.timeout = timeout
+            -- re-arm
+            state.hide_timer:kill()
+            state.hide_timer:resume()
+        end
     end
 
 
@@ -2316,10 +2328,6 @@ function render()
     -- submit
     mp.set_osd_ass(osc_param.playresy * osc_param.display_aspect,
                    osc_param.playresy, ass.text)
-
-
-
-
 end
 
 --
@@ -2395,7 +2403,7 @@ function process_event(source, what)
         if element_has_action(elements[n], action) then
             elements[n].eventresponder[action](elements[n])
         end
-        tick()
+        request_tick()
     end
 end
 
@@ -2450,6 +2458,12 @@ function tick()
         -- Flush OSD
         mp.set_osd_ass(osc_param.playresy, osc_param.playresy, "")
     end
+
+    state.tick_last_time = mp.get_time()
+
+    if state.anitype ~= nil then
+        request_tick()
+    end
 end
 
 function do_enable_keybindings()
@@ -2478,7 +2492,7 @@ end
 
 validate_user_opts()
 
-mp.register_event("shutdown", reset_margins)
+mp.register_event("shutdown", shutdown)
 mp.register_event("start-file", request_init)
 mp.register_event("tracks-changed", request_init)
 mp.observe_property("playlist", nil, request_init)
@@ -2519,17 +2533,16 @@ mp.observe_property("window-maximized", "bool",
 mp.observe_property("idle-active", "bool",
     function(name, val)
         state.idle = val
-        tick()
+        request_tick()
     end
 )
 mp.observe_property("pause", "bool", pause_state)
-mp.observe_property("cache-idle", "bool", cache_state)
+mp.observe_property("demuxer-cache-state", "native", cache_state)
 mp.observe_property("vo-configured", "bool", function(name, val)
-    if val then
-        mp.register_event("tick", tick)
-    else
-        mp.unregister_event(tick)
-    end
+    request_tick()
+end)
+mp.observe_property("playback-time", "number", function(name, val)
+    request_tick()
 end)
 
 -- mouse show/hide bindings
@@ -2568,15 +2581,20 @@ mp.set_key_bindings({
 }, "window-controls", "force")
 mp.enable_key_bindings("window-controls")
 
-user_opts.hidetimeout_orig = user_opts.hidetimeout
+function get_hidetimeout()
+    if user_opts.visibility == "always" then
+        return -1 -- disable autohide
+    end
+    return user_opts.hidetimeout
+end
 
 function always_on(val)
-    if val then
-        user_opts.hidetimeout = -1 -- disable autohide
-        if state.enabled then show_osc() end
-    else
-        user_opts.hidetimeout = user_opts.hidetimeout_orig
-        if state.enabled then hide_osc() end
+    if state.enabled then
+        if val then
+            show_osc()
+        else
+            hide_osc()
+        end
     end
 end
 
@@ -2586,7 +2604,7 @@ function visibility_mode(mode, no_osd)
     if mode == "cycle" then
         if not state.enabled then
             mode = "auto"
-        elseif user_opts.hidetimeout >= 0 then
+        elseif user_opts.visibility ~= "always" then
             mode = "always"
         else
             mode = "never"
@@ -2606,9 +2624,13 @@ function visibility_mode(mode, no_osd)
         return
     end
 
+    user_opts.visibility = mode
+
     if not no_osd and tonumber(mp.get_property("osd-level")) >= 1 then
         mp.osd_message("OSC visibility: " .. mode)
     end
+
+    update_margins()
 end
 
 visibility_mode(user_opts.visibility, true)
