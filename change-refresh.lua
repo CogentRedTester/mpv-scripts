@@ -85,12 +85,21 @@ var = {
     rates = {}
 }
 
+local prevRates = options.rates
+
 --is run whenever a change in script-opts is detected
 function updateOptions()
     msg.verbose('updating options')
     read_options(options, "changerefresh")
-    checkRatesString()
-    updateTable()
+
+    --only runs the heavy commands if the rates string has been changed
+    if prevRates ~= options.rates then
+        msg.verbose('rates whitelist has changed')
+
+        checkRatesString()
+        updateTable()
+        prevRates = options.rates
+    end
 end
 
 --checks if the rates string contains any invalid characters
