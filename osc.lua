@@ -2642,8 +2642,15 @@ set_virt_mouse_area(0, 0, 0, 0, "window-controls")
 
 
 --automatically generated function to update options
+local prev_opts = utils.to_string(user_opts)
 function update_opts()
     opt.read_options(user_opts, 'osc')
+
+    if utils.to_string(user_opts) == prev_opts then
+        return
+    end
+    prev_opts = utils.to_string(user_opts)
+
     validate_user_opts()
     visibility_mode(user_opts.visibility, true)
     request_init()
