@@ -1,5 +1,4 @@
---simple script which loads a music profile whenever an audio file is played and forces the OSC to update it's layout
---this requires my modified osc.lua function and script message in order to work
+--simple script which loads a music profile whenever an audio file is played
 
 msg = require 'mp.msg'
 opt = require 'mp.options'
