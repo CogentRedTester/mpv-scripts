@@ -110,7 +110,7 @@ function checkRatesString()
     str = str:gsub("%-", '')
 
     if str:match("%D") then
-        print ('rates whitelist contains invalid characters, can only contain numbers, semicolons and hyphens')
+        msg.warn ('rates whitelist contains invalid characters, can only contain numbers, semicolons and hyphens')
     end
 end
 
@@ -138,12 +138,12 @@ function updateTable()
             end
 
             if originalRate == nil then
-                msg.info("missing rate before hyphen in whitelist, ignoring option")
+                msg.warn("missing rate before hyphen in whitelist, ignoring option")
                 goto loopend
             end
             if newRate == nil then
-                msg.info("missing rate after hyphen in whitelist")
-                msg.info("ignoring and setting " .. rate .. " to " .. originalRate)
+                msg.warn("missing rate after hyphen in whitelist for option: " .. rate)
+                msg.warn("ignoring and setting " .. rate .. " to " .. originalRate)
                 newRate = originalRate
             end
             var.rates[originalRate] = newRate
