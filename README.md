@@ -12,14 +12,17 @@ Full description in file.
 Automatically scans the directory of the currently loaded file and loads any valid cover art into mpv as additional video tracks.
 Has options for selecting what file names and types are considered valid.
 
+## cycle-commands
+Cycles through a series of commands on a keypress. Each iteration of the cycle can contain as many commands as one wants. Syntax details are at the top of the file.
+
 ## cycle-profile
 Cycles through a list of profiles sent via a script message and prints the profile-desc to the OSD. More details at the top of the file
 
 ## editions-notification
-Prints a message on the OSD if editions are found in the file, and temporarily switches the osd-playing-message to the editions-list property when switching. This makes it easier to tell the number and names of the editions.
+Prints a message on the OSD if editions are found in the file, and temporarily switches the osd-playing-message to the editions-list property when switching. This makes it easier to tell the number and names while navigating editions.
 
 ## music-mode
-Switches to a music profile when an audio file is being played and forces an update to the osc to allow for separate layouts for music, requires my modified osc.lua
+Switches to a music profile when an audio file is being played and switches back when a non-audio file is played
 
 ## playlist-shuffle
 shuffles the playlist and moves the current file to the start of the playlist
