@@ -64,6 +64,7 @@ end
 function loadPlaceholder()
     if o.placeholder == "" then return end
 
+    msg.verbose('file does not have video track, loading placeholder')
     local path = mp.command_native({"expand-path", o.placeholder})
     mp.commandv('video-add', path)
 end
@@ -77,6 +78,18 @@ function checkForCoverart()
     local filepath = mp.get_property('path')
     msg.verbose('filepath: ' .. filepath)
 
+    --does not look for cover art if the file does not have a valid extension
+    local ext = filepath:sub(filepath:find([[.[^.]*$]]) + 1)
+    msg.verbose('file extension: ' .. ext)
+    if inTable(ext, audioExts) == false then
+        msg.verbose('file does not have valid extension, aborting coverart search')
+        --loads a placeholder image if no covers were found and a window is forced
+        if mp.get_property('vid') == "no" and mp.get_property_bool('force-window') then
+            loadPlaceholder()
+        end
+        return
+    end
+
     --converts the string into a compatible path for mpv to parse
     --only confirmed to work in windows
     local path = utils.join_path(workingDirectory, filepath)
@@ -89,10 +102,6 @@ function checkForCoverart()
     local directory, filename = utils.split_path(path)
     msg.verbose('directory: ' .. directory)
     msg.verbose('file: ' .. filename)
-
-    --does not look for cover art if the file is not an adu
-    local ext = filename:sub(filename:find([[.[^.]*$]]) + 1)
-    if inTable(ext, audioExts) == false then return end
 
     --loads the files from the directory
     files = utils.readdir(directory, "files")
