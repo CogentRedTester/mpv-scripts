@@ -5,7 +5,7 @@ opt = require 'mp.options'
 
 o = {
     --valid extensions to run music-mode
-    exts = 'mp3;wav;ogm;flac;m4a;wma;ogg;opus;alac;mka',
+    exts = 'mp3;wav;ogm;flac;m4a;wma;ogg;opus;alac;mka;aiff',
 
     --profile to call when valid extension is found
     profile = "music",

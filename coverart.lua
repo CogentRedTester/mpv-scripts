@@ -17,7 +17,7 @@ local o = {
     imageExts = 'jpg;jpeg;png;bmp;gif',
 
     --only loads cover art when playing files with the following extensions:
-    audioExts = 'mp3;wav;ogm;flac;m4a;wma;ogg;opus;alac;mka',
+    audioExts = 'mp3;wav;ogm;flac;m4a;wma;ogg;opus;alac;mka;aiff',
 
     --file path of a placeholder image to use if no cover art is found
     --will only be used if force-window is enabled
