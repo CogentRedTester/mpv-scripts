@@ -2649,11 +2649,11 @@ function update_opts()
     if utils.to_string(user_opts) == prev_opts then
         return
     end
-    prev_opts = utils.to_string(user_opts)
 
     validate_user_opts()
     visibility_mode(user_opts.visibility, true)
     request_init()
+    prev_opts = utils.to_string(user_opts)
 end
 
 mp.register_script_message('update-osc-options', update_opts)
