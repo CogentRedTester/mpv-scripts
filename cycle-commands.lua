@@ -32,11 +32,12 @@ o = {
     command_seperator = ';',
 
     --seperates words in commands
-    wordSeperator = ' ',
+    word_seperator = ' ',
 
-    --replaces spaces in command
-    --necessary if one want to use multi-word strings and spaces are set as the word seperator (default)
-    replace_space_char = '_'
+    --place before a seperator treat as part of the string, useful for passing multi-word strings
+    --use two of these characters to pass the normal escape character
+    escape_char = "%",
+
 }
 
 opt.read_options(o, 'cycle-commands')
@@ -44,8 +45,28 @@ opt.read_options(o, 'cycle-commands')
 --splits the string into an array of strings around the separator
 function splitString(inputstr, seperator)
     local t = {}
+    local escape = false
+    msg.debug('splitting "' .. inputstr .. '" around "' .. seperator .. '"')
+
+    local istr = inputstr
+    inputstr = inputstr:gsub("%" .. o.escape_char .. seperator .. seperator, "%" .. o.escape_char .. seperator .. o.word_seperator .. seperator)
+    if istr ~= inputstr then
+        msg.debug('two seperators found after escape char, modified string: "' .. inputstr .. '"')
+    end
+
     for str in string.gmatch(inputstr, "([^"..seperator.."]+)") do
+        if escape then
+            msg.debug('escape character found, extending "' .. t[#t] .. '" with "' .. seperator .. str .. '"')
+            t[#t] = t[#t] .. seperator .. str
+            escape = false
+        else
+            msg.debug('inserting "' .. str .. '" into table')
             table.insert(t, str)
+        end
+        
+        if (str:sub(-1) == o.escape_char) then
+            escape = true
+        end
     end
     return t
 end
@@ -85,13 +106,22 @@ function main(str)
 
             --splits each word in each command around ' '
             for j=1, #commands[str][i], 1 do
-                local t = splitString(commands[str][i][j], o.wordSeperator)
+                local t = splitString(commands[str][i][j], o.word_seperator)
                 msg.debug(utils.to_string(t))
                 commands[str][i][j] = t
 
-                --changes all alternate space characters to spaces
+                --checks for escape characters
                 for k=1, #t, 1 do
-                    commands[str][i][j][k] = string.gsub(commands[str][i][j][k], o.replace_space_char, ' ')
+                    local escape_char = o.escape_char
+                    if escape_char == "%" then
+                        escape_char = "%%"
+                    end
+
+                    msg.debug('checking for escape characters in "' .. commands[str][i][j][k] )
+                    commands[str][i][j][k] = string.gsub(commands[str][i][j][k], escape_char .. o.cycle_seperator, o.cycle_seperator)
+                    commands[str][i][j][k] = string.gsub(commands[str][i][j][k], escape_char .. o.command_seperator, o.command_seperator)
+                    commands[str][i][j][k] = string.gsub(commands[str][i][j][k], escape_char .. o.word_seperator, o.word_seperator)
+                    msg.debug('cleaned string = ' .. commands[str][i][j][k])
                 end
             end
         end
@@ -111,7 +141,7 @@ function main(str)
     --moves the iterator forward
     iterators[str] = iterators[str] + 1
     if iterators[str] > #commands[str] then
-        msg.verbose('reached end of profiles, wrapping back to start')
+        msg.verbose('reached end of cycle, wrapping back to start')
         iterators[str] = 1
     end
 end
