@@ -4,10 +4,10 @@
         script-message cycle-commands "commandline1|commandline2|commandline3"
 
     Everything between | is run like a normal command line in input.conf, this includes using semicolons to run multiple commands at once
-    If you need to send a command with spaces, such as a multi-word string, use '_' in place of the space
+    If you need to send a command using the seperators, such as for multi-word strings, use the escape character "%"
     for example:
         
-        script-message cycle-commands "show-text one 1000 ;  print-text two | show-text three_four"
+        script-message cycle-commands "show-text one 1000 ;  print-text two | show-text three% four"
     
     This would, on keypress one, print 'one' to the OSD for 1 second and 'two' to the console, on keypress two 'three four' would be printed to the OSD
 
