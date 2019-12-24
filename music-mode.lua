@@ -92,34 +92,57 @@ function fileLoaded()
 end
  
 --toggles music mode
-function toggle()
-    if musicMode then
-        deactivate()
-    else
+function script_message(command)
+    if command == "on" or command == nil then
         activate()
+    elseif command == "off" then
+        deactivate()
+    elseif command == "toggle" then
+        if musicMode then
+            deactivate()
+        else
+            activate()
+        end
+    else
+        msg.warn('unknown command "' .. command .. '"')
     end
+end
+
+function lock()
+    locked = true
+    msg.info('music mode locked')
+    mp.osd_message('music mode locked')
+end
+
+function unLock()
+    locked = false
+    msg.info('music mode unlocked')
+    mp.osd_message('music mode unlocked')
 end
 
 --toggles lock
-function lock()
-    if locked then
-        locked = false
-        msg.info('music mode unlocked')
-        mp.osd_message('music mode unlocked')
+function lock_script_message(command)
+    if command == "on" or command == nil then
+        lock()
+    elseif command == "off" then
+        unLock()
+    elseif command == "toggle" then
+        if locked then
+            unLock()
+        else
+            lock()
+        end
     else
-        locked = true
-        msg.info('music mode locked')
-        mp.osd_message('music mode locked')
+        msg.warn('unknown command "' .. command .. '"')
     end
 end
 
---toggles music mode on and off
-mp.register_script_message('music-mode-toggle', toggle)
+--turns music mode on
+--accepts arguments: 'on', 'off', 'toggle'
+mp.register_script_message('music-mode', script_message)
 
 --stops the script from switching modes on file loads
-mp.register_script_message('music-mode-lock', lock)
-
---switches music mode on
-mp.register_script_message('music-mode', activate)
+----accepts arguments: 'on', 'off', 'toggle'
+mp.register_script_message('music-mode-lock', lock_script_message)
 
 mp.register_event('file-loaded', fileLoaded)
