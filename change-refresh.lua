@@ -32,6 +32,7 @@ These manual changes bypass the whitelist and rate associations and are sent to 
 ]]--
 
 msg = require 'mp.msg'
+utils = require 'mp.utils'
 require 'mp.options'
 
 --options available through --script-opts=changerefresh-[option]=value
@@ -85,20 +86,19 @@ var = {
     rates = {}
 }
 
-local prevRates = options.rates
+read_options(options, 'changerefresh', function(list) updateOptions(list) end)
 
 --is run whenever a change in script-opts is detected
-function updateOptions()
+function updateOptions(changes)
     msg.verbose('updating options')
-    read_options(options, "changerefresh")
+    msg.debug(utils.to_string(list))
 
     --only runs the heavy commands if the rates string has been changed
-    if prevRates ~= options.rates then
+    if changes['rates'] then
         msg.verbose('rates whitelist has changed')
 
         checkRatesString()
         updateTable()
-        prevRates = options.rates
     end
 end
 
@@ -116,6 +116,9 @@ end
 
 --creates an array of valid video rates and a map of display rates to switch to
 function updateTable()
+    var.rates = {}
+    var.rateList = {}
+
     msg.verbose("updating tables of valid rates")
     for rate in string.gmatch(options.rates, "[^;]+") do
         msg.debug("found option: " .. rate)
@@ -449,8 +452,6 @@ function autoChange()
     end
 end
 
-updateOptions()
-
 --key tries to change current display to match video fps
 mp.add_key_binding("f10", "change_refresh_rate", matchVideo)
 
@@ -469,9 +470,6 @@ mp.register_script_message("change-refresh", changeCurrentDisplay)
 
 --reverts the refresh
 mp.register_script_message("revert-refresh", revertRefresh)
-
---updates options from script-opts whenever script-opts changes
-mp.observe_property("options/script-opts", nil, updateOptions)
 
 --runs the script automatically on startup if option is enabled
 mp.register_event('file-loaded', autoChange)
