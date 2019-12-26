@@ -1,5 +1,5 @@
 --this script automatically scans the directory of the currently open file for valid external cover art and automatically loads it into mpv player
---I can only confirm that this works on windows, I have not tested it on any other platform, however it should be simple to adapt by modifying lines 44 & 45
+--I can only confirm that this works on windows, I have not tested it on any other platform, however it should be simple to adapt by modifying the checkForCoverart function
 
 utils = require 'mp.utils'
 msg = require 'mp.msg'
@@ -91,7 +91,7 @@ function checkForCoverart()
     end
 
     --converts the string into a compatible path for mpv to parse
-    --only confirmed to work in windows
+    --only confirmed to work in windows, this is the part that may need to be changed for other operating systems
     local path = utils.join_path(workingDirectory, filepath)
     msg.verbose('full path: ' .. path)
     path = path:gsub([[/.\]], [[/]])
