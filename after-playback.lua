@@ -45,6 +45,7 @@ local o = {
     osd_output = true
 }
 
+
 local commands = {}
 local current_action
 local active = false
@@ -54,8 +55,6 @@ function osd_message(message)
         mp.osd_message(message)
     end
 end
-
-local s = 0
 
 --sets the list of commands to send to nircmd
 function set_action(action, flag)
@@ -150,7 +149,7 @@ end
 --for some reason this is triggered after every seek?
 function eof()
     local finished = mp.get_property_bool('eof-reached')
-    msg.debug('eof = ' .. tostring(b))
+    msg.debug('eof = ' .. tostring(finished))
     
     if finished then
         run_action()
