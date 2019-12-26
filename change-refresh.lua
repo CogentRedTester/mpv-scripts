@@ -67,9 +67,13 @@ local options = {
     --if true, sets the monitor to 2160p when the resolution of the video is greater than 1440p
     --if less the monitor will be set to the default shown above, or to the current resolution
     UHD_adaptive = false,
+
+    --set whether to output status messages to the osd
+    osd_output = true
 }
 
-var = {
+local var = {
+    --saved as strings
     dname = "",
     dnumber = "",
     original_width = options.original_width,
@@ -77,10 +81,13 @@ var = {
     current_width = "",
     current_height = "",
     bdepth = "32",
-    original_fps = "60",
-    new_fps = "",
-    new_width = "",
-    new_height = "",
+
+    --saved as numbers
+    original_fps = 0,
+    new_fps = 0,
+    new_width = 0,
+    new_height = 0,
+
     beenReverted = true,
     rateList = {},
     rates = {}
@@ -91,10 +98,10 @@ read_options(options, 'changerefresh', function(list) updateOptions(list) end)
 --is run whenever a change in script-opts is detected
 function updateOptions(changes)
     msg.verbose('updating options')
-    msg.debug(utils.to_string(list))
+    msg.debug(utils.to_string(changes))
 
     --only runs the heavy commands if the rates string has been changed
-    if changes['rates'] then
+    if changes == nil or changes['rates'] then
         msg.verbose('rates whitelist has changed')
 
         checkRatesString()
@@ -174,6 +181,12 @@ function setCurrentRes()
     end
 end
 
+function osdMessage(string)
+    if options.osd_output then
+        mp.osd_message(string)
+    end
+end
+
 --finds information about the current display and detects if it needs to save settings or call revert refresh
 --afterwards it passes all the information to the changeRefresh function
 function changeCurrentDisplay(width, height, rate)
@@ -232,8 +245,8 @@ function changeRefresh(width, height, rate, display)
         rate == currentRefresh and (display == var.dnumber or var.dnumber == "") and
         width == var.current_width and height == var.current_height) then
 
-        msg.verbose('monitor already at target refresh and resolution, aborting change')
-        mp.osd_message("changing monitor " .. var.dnumber .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
+        msg.info('monitor already at target refresh and resolution, aborting change')
+        osdMessage("changing display " .. var.dnumber .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
         var.current_width, var.current_height = "", ""
         return
     end
@@ -263,7 +276,7 @@ function changeRefresh(width, height, rate, display)
     --waits 3 seconds before continuing or until eof/player exit
     while (mp.get_time() - time < 3 and mp.get_property_bool("eof-reached") == false)
     do
-        mp.osd_message("changing display " .. var.dnumber .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
+        osdMessage("changing display " .. var.dnumber .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
     end
     
     var.beenReverted = false
@@ -287,10 +300,11 @@ function getDisplayResolution()
     local time = mp.get_time()
     while time + 0.1 > mp.get_time() do end
 
-    local width = mp.get_property("osd-width")
-    local height = mp.get_property("osd-height")
+    local width, height = mp.get_osd_size()
+    width = tostring(width)
+    height = tostring(height)
 
-    msg.verbose('current monitor resolution = ' .. tostring(width) .. 'x' .. tostring(height))
+    msg.verbose('current monitor resolution = ' .. width .. 'x' .. height)
 
     mp.set_property_bool("fullscreen", isFullscreen)
 
@@ -357,11 +371,11 @@ end
 function toggleFpsType()
     if options.estimated_fps then
         options.estimated_fps = false
-        mp.osd_message("[Change-Refresh] now using container fps")
+        osdMessage("[Change-Refresh] now using container fps")
         msg.info("now using container fps")
     else
         options.estimated_fps = true
-        mp.osd_message("[Change-Refresh] now using estimated fps")
+        osdMessage("[Change-Refresh] now using estimated fps")
         msg.info("now using estimated fps")
     end
     return
@@ -425,7 +439,7 @@ function revertRefresh()
         var.beenReverted = true
     else
         msg.verbose("aborting reversion, display has not been changed")
-        mp.osd_message('[change-refresh] display has not been changed')
+        osdMessage('[change-refresh] display has not been changed')
     end
 end
 
@@ -438,7 +452,7 @@ function setDefault()
 
     --logging change to OSD & the console
     msg.info('set ' .. var.original_width .. "x" .. var.original_height .. " " .. var.original_fps .. "Hz as defaut display rate")
-    mp.osd_message('Change-Refresh: set ' .. var.original_width .. "x" .. var.original_height .. " " .. var.original_fps .. "Hz as defaut display rate")
+    osdMessage('Change-Refresh: set ' .. var.original_width .. "x" .. var.original_height .. " " .. var.original_fps .. "Hz as defaut display rate")
 end
 
 --runs the script automatically on startup if option is enabled
@@ -451,6 +465,13 @@ function autoChange()
         matchVideo()
     end
 end
+
+function scriptMessage(width, height, rate)
+    msg.verbose('recieved script message: ' .. width .. ' ' .. height .. ' ' .. rate)
+    changeCurrentDisplay(width, height, rate)
+end
+
+updateOptions()
 
 --key tries to change current display to match video fps
 mp.add_key_binding("f10", "change_refresh_rate", matchVideo)
@@ -466,7 +487,7 @@ mp.add_key_binding("", "set_default_refresh_rate", setDefault)
 
 --sends a command to switch to the specified display rate
 --syntax is: script-message set-display-rate [width] [height] [fps]
-mp.register_script_message("change-refresh", changeCurrentDisplay)
+mp.register_script_message("change-refresh", scriptMessage)
 
 --reverts the refresh
 mp.register_script_message("revert-refresh", revertRefresh)
