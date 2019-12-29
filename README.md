@@ -46,10 +46,3 @@ A combination of two scripts:
 - nextfile: https://github.com/jonniek/mpv-nextfile
 
 This script runs the nextfile commands when there is only one item in the playlist
-
-## osc
-Identical to the script here: https://github.com/mpv-player/mpv/blob/master/player/lua/osc.lua
-
-However, I have added an extra function and script message to allow for changing the layout during runtime using profiles.
-
-Unnecessary as of: https://github.com/mpv-player/mpv/commit/12843dcea10f2b474aa7ffdee007999caad77762
