@@ -110,14 +110,14 @@ end
 
 function lock()
     locked = true
-    msg.info('music mode locked')
-    mp.osd_message('music mode locked')
+    msg.info('Music Mode locked')
+    mp.osd_message('Music Mode locked')
 end
 
 function unLock()
     locked = false
-    msg.info('music mode unlocked')
-    mp.osd_message('music mode unlocked')
+    msg.info('Music Mode unlocked')
+    mp.osd_message('Music Mode unlocked')
 end
 
 --toggles lock
