@@ -16,8 +16,8 @@ This will change the display to 23, 24, and 30 fps when playing videos in those 
 playing videos in 25 Hz
 
 The script will keep track of the original refresh rate of the monitor and revert when either the
-correct keybind is pressed, or when mpv exits. The original rate needs to be included on the whitelist, but if the rate is
-hyphenated it will ignore the switched rate and just use the original.
+correct keybind is pressed, or when mpv exits. The original rate needs to be included on the whitelist and follows
+custom rate rules (i.e. if the monitor was originally 25Hz and the whitelist contains "25-50", then it will revert to 50)
 
 The script is able to find the current resolution of the monitor and will always use those dimensions when switching refresh rates,
 however I have an UHD mode (option is UHD_adaptive) hardcoded to use a resolution of 3840x2160p for videos with a height of > 1440 pixels.
@@ -168,11 +168,11 @@ function updateTable()
     end
 end
 
---saves the current width of the display
+--saves the current resolution of the display
 --this value is only stored until the changeRefresh function returns
---this is because the current res information is required at different points for different commands and to find
---the res the player has to switch into and out of fullscreen. Doing so multiple times would be annoying, so
---this function makes sure it will only happen once, no matter what command is sent
+--this function exists because the current res information is required at different points for different commands and to find
+--the res the player must switch into and out of fullscreen. Doing so multiple times would be annoying, so
+--this function makes sure it will only happen once, no matter which command is sent
 function setCurrentRes()
     if options.detect_monitor_resolution and var.current_width == "" then
         var.current_width, var.current_height = getDisplayResolution()
@@ -181,6 +181,7 @@ function setCurrentRes()
     end
 end
 
+--prints osd messages if the option is enabled
 function osdMessage(string)
     if options.osd_output then
         mp.osd_message(string)
@@ -216,7 +217,7 @@ function changeCurrentDisplay(width, height, rate)
         msg.verbose('saving original fps: ' .. var.original_fps)
     end
 
-    --saves the current name and dumber for next time
+    --saves the current name and number for next time
     var.dname = dname
     var.dnumber = dnumber
 
@@ -229,7 +230,6 @@ function changeRefresh(width, height, rate, display)
     rate = tostring(rate)
     local currentRefresh = mp.get_property_number('display-fps')
     msg.verbose('current refresh of display is ' .. currentRefresh)
-    msg.verbose('finding on whitelist...')
 
     currentRefresh = tostring(findValidRate(math.floor(currentRefresh)))
     msg.verbose('current refresh = ' .. currentRefresh)
@@ -384,6 +384,13 @@ end
 --picks which whitelisted rate to switch the monitor to
 function findValidRate(rate)
     msg.verbose('searching for closest valid rate to ' .. rate)
+    
+    --if the rate already exists in the table the the function just returns that
+    if var.rates[rate] ~= nil then
+        msg.verbose(rate .. ' already in list, returning matching rate: ' .. var.rates[rate])
+        return var.rates[rate]
+    end
+
     local closestRate
     rate = tonumber(rate)
 
@@ -396,7 +403,11 @@ function findValidRate(rate)
             break
         end
     end
-    msg.verbose('closest rate is ' .. closestRate)
+    msg.verbose('closest rate is ' .. closestRate .. ', saving...')
+
+    --saves the rate to reduce repeated searches
+    var.rates[rate] = var.rates[closestRate]
+
     return closestRate
 end
 
@@ -421,10 +432,6 @@ function matchVideo()
 
     --picks which whitelisted rate to switch the monitor to based on the video rate
     local rate = findValidRate(var.new_fps)
-
-    --if the user has set a custom display rate for the video rate, then rate is changed to the new one
-    msg.verbose('saved display rate for ' .. rate .. ' is ' .. var.rates[rate])
-    rate = var.rates[rate]
 
     changeCurrentDisplay(var.new_width, var.new_height, rate)
 end
