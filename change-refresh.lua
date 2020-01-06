@@ -225,31 +225,8 @@ function changeCurrentDisplay(width, height, rate)
 end
 
 --calls nircmd to change the display resolution and rate
---checks if the new display rate and res are already set, and aborts the change if so
 function changeRefresh(width, height, rate, display)
     rate = tostring(rate)
-    local currentRefresh = mp.get_property_number('display-fps')
-    msg.verbose('current refresh of display is ' .. currentRefresh)
-
-    currentRefresh = tostring(findValidRate(math.floor(currentRefresh)))
-    msg.verbose('current refresh = ' .. currentRefresh)
-    setCurrentRes()
-
-    msg.debug('new rate: ' .. rate .. ' current rate: ' .. currentRefresh)
-    msg.debug('new display: ' .. display .. ' saved display: ' .. var.dnumber)
-    msg.debug('new res: ' .. width .. 'x' .. height .. ' current res: ' .. var.current_width .. 'x' .. var.current_height)
-
-    --tests if the display is already at the required rate and detect_monitor_resolution
-    --if detect_monitor_resolution is disabled and UHD_adaptive is enabled, then this statement will never run, because it has no way of knowing which res it is on
-    if ((options.UHD_adaptive and options.detect_monitor_resolution == false) == false and
-        rate == currentRefresh and (display == var.dnumber or var.dnumber == "") and
-        width == var.current_width and height == var.current_height) then
-
-        msg.info('monitor already at target refresh and resolution, aborting change')
-        osdMessage("changing display " .. var.dnumber .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
-        var.current_width, var.current_height = "", ""
-        return
-    end
 
     msg.verbose('calling nircmd with command: ' .. options.nircmd .. " setdisplay monitor:" .. display .. " " .. width .. " " .. height .. " " .. var.bdepth .. " " .. rate)
 
@@ -385,7 +362,7 @@ end
 function findValidRate(rate)
     msg.verbose('searching for closest valid rate to ' .. rate)
     
-    --if the rate already exists in the table the the function just returns that
+    --if the rate already exists in the table then the function just returns that
     if var.rates[rate] ~= nil then
         msg.verbose(rate .. ' already in list, returning matching rate: ' .. var.rates[rate])
         return var.rates[rate]
