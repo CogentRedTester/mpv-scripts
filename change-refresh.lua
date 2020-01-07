@@ -25,8 +25,11 @@ however I have an UHD mode (option is UHD_adaptive) hardcoded to use a resolutio
 It is possible to disable automatic resolution detection and use manual values (see options below).
 The detection is done via switching to fullscreen mode and grabbing the resolution of the OSD, so it can be disabled if one finds it annoying.
 
+The keybind to switch refresh rates is f10 by default, but this can be changed by setting different script bindings in input.conf. All of the valid keybinds,
+their names, and their defaults are at the bottom of this script file
+
 You can also send refresh change commands directly using script messages:
-    script-message set-display-rate [width] [height] [rate]
+    script-message change-refresh [width] [height] [rate]
 
 These manual changes bypass the whitelist and rate associations and are sent to nircmd directly, so make sure you send a valid integer
 ]]--
@@ -61,8 +64,8 @@ local options = {
 
     --default width and height to use when reverting the refresh rate
     --ony used if detect_monitor_resolution is false
-    original_width = 1920,
-    original_height = 1080,
+    original_width = "1920",
+    original_height = "1080",
 
     --if true, sets the monitor to 2160p when the resolution of the video is greater than 1440p
     --if less the monitor will be set to the default shown above, or to the current resolution
@@ -192,9 +195,6 @@ end
 --afterwards it passes all the information to the changeRefresh function
 function changeCurrentDisplay(width, height, rate)
     local dname, dnumber = getDisplayDetails()
-    width = tostring(width)
-    height = tostring(height)
-    rate = tostring(rate)
 
     --if the change is executed on a different monitor to the previous, and the previous monitor has not been been reverted
     --then revert the previous changes before changing the new monitor
@@ -208,10 +208,8 @@ function changeCurrentDisplay(width, height, rate)
     --if beenReverted=true, then the current display settings may not be saved
     if (var.beenReverted == true) then
         --saves the actual resolution only if option set, otherwise uses the defaults
-        if options.detect_monitor_resolution then
-            msg.verbose('saving original resolution: ' .. var.current_width .. 'x' .. var.current_height)
-            var.original_width, var.original_height = var.current_width, var.current_height
-        end
+        msg.verbose('saving original resolution: ' .. var.current_width .. 'x' .. var.current_height)
+        var.original_width, var.original_height = var.current_width, var.current_height
 
         var.original_fps = math.floor(mp.get_property_number('display-fps'))
         msg.verbose('saving original fps: ' .. var.original_fps)
@@ -344,19 +342,6 @@ function getModifiedWidthHeight(width, height)
     return width, height
 end
 
---toggles between using estimated and specified fps
-function toggleFpsType()
-    if options.estimated_fps then
-        options.estimated_fps = false
-        osdMessage("[Change-Refresh] now using container fps")
-        msg.info("now using container fps")
-    else
-        options.estimated_fps = true
-        osdMessage("[Change-Refresh] now using estimated fps")
-        msg.info("now using estimated fps")
-    end
-    return
-end
 
 --picks which whitelisted rate to switch the monitor to
 function findValidRate(rate)
@@ -439,14 +424,26 @@ function setDefault()
     osdMessage('Change-Refresh: set ' .. var.original_width .. "x" .. var.original_height .. " " .. var.original_fps .. "Hz as defaut display rate")
 end
 
+--toggles between using estimated and specified fps
+function toggleFpsType()
+    if options.estimated_fps then
+        options.estimated_fps = false
+        osdMessage("[Change-Refresh] now using container fps")
+        msg.info("now using container fps")
+    else
+        options.estimated_fps = true
+        osdMessage("[Change-Refresh] now using estimated fps")
+        msg.info("now using estimated fps")
+    end
+    return
+end
+
 --runs the script automatically on startup if option is enabled
 function autoChange()
     if options.auto then
         --waits until some of the required properties have been loaded before running
-        while mp.get_property_number('time-pos') < 0.5 do end
-
         msg.verbose('automatically changing refresh')
-        matchVideo()
+        mp.add_timeout(0.5, matchVideo)
     end
 end
 
@@ -457,24 +454,21 @@ end
 
 updateOptions()
 
---key tries to change current display to match video fps
-mp.add_key_binding("f10", "change_refresh_rate", matchVideo)
+--tries to change current display to match video fps (the main function you'd want to use)
+mp.add_key_binding("f10", "match-refresh", matchVideo)
 
---key reverts monitor to original refreshrate
-mp.add_key_binding("Ctrl+f10", "revert_refresh_rate", revertRefresh)
+--reverts monitor to original refreshrate
+mp.add_key_binding("Ctrl+f10", "revert-refresh", revertRefresh)
 
---ket to switch between using estimated and specified fps property
-mp.register_script_message('toggle_fps_type', toggleFpsType)
+--switches between using estimated and specified fps property
+mp.add_key_binding("", 'toggle-fps-type', toggleFpsType)
 
---key to set the current resolution and refresh rate as the default
-mp.add_key_binding("", "set_default_refresh_rate", setDefault)
+--set the current resolution and refresh rate as the default
+mp.add_key_binding("", "set-default-refresh", setDefault)
 
 --sends a command to switch to the specified display rate
---syntax is: script-message set-display-rate [width] [height] [fps]
+--syntax is: script-message change-refresh [width] [height] [rate]
 mp.register_script_message("change-refresh", scriptMessage)
-
---reverts the refresh
-mp.register_script_message("revert-refresh", revertRefresh)
 
 --runs the script automatically on startup if option is enabled
 mp.register_event('file-loaded', autoChange)
