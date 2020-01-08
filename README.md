@@ -37,12 +37,3 @@ Exactly the same as the script available here:
 https://github.com/mpv-player/mpv/blob/master/TOOLS/lua/autoload.lua
 
 However, instead of loading automatically it only loads when a keybind is pressed (Ctrl+f8 by default)
-
-## betterchapters
-A combination of two scripts:
-
-- betterchapters:   https://github.com/mpv-player/mpv/issues/4738#issuecomment-321298846
-
-- nextfile: https://github.com/jonniek/mpv-nextfile
-
-This script runs the nextfile commands when there is only one item in the playlist
