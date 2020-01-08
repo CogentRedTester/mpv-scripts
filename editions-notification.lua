@@ -9,10 +9,10 @@ lastFilename = ""
 
 --shows a message on the OSD if the file has editions
 function showNotification()
-    local editions = mp.get_property_number('editions')
+    local editions = mp.get_property_number('editions', 0)
 
-    --if there are no editions then exit the function
-    if editions == nil then return end
+    --if there are no editions (or 1 dummy edition) then exit the function
+    if editions < 2 then return end
 
     local time = mp.get_time()
     while (mp.get_time() - time < 1) do
