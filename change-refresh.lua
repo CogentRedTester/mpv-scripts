@@ -54,6 +54,10 @@ local options = {
     --change refresh automatically on startup
     auto = false,
 
+    --duration (in seconds) of the pause when changing display modes
+    --set to zero to disable video pausing
+    pause = 3,
+
     --colour bit depth to send to nircmd
     --you shouldn't need to change this, but it's here just in case
     bdepth = "32",
@@ -71,9 +75,9 @@ local options = {
     original_width = "1920",
     original_height = "1080",
 
-    --if true, sets the monitor to the specified dimensions when the resolution of the video is greater than or equal to the threshold
+    --if enabled, this mode sets the monitor to the specified dimensions when the resolution of the video is greater than or equal to the threshold
     --if less than the threshold the monitor will be set to the default shown above, or to the current resolution
-    --this feature is only really useful if you don't want to be upscaling video up to UHD, but still want to play UHD files
+    --this feature is only really useful if you don't want to be upscaling video to UHD, but still want to play UHD files
     UHD_adaptive = false,
     UHD_threshold = 1440,
     UHD_width = "3840",
@@ -255,12 +259,20 @@ function changeRefresh(width, height, rate, display)
             [7] = rate
         }
     })
-    --waits 3 seconds before continuing or until eof/player exit
-    while (mp.get_time() - time < 3 and mp.get_property_bool("eof-reached") == false)
+
+    --pauses the player for a set duration of seconds while the display is switching
+    while
+        time + options.pause > mp.get_time() and
+        mp.get_property_bool("eof-reached") == false
     do
         osdMessage("changing display " .. var.dnumber .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
     end
     
+    --if pause is disabled then it sends a seperate message
+    if options.pause < 1 then
+        osdMessage("changing display " .. var.dnumber .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
+    end
+
     var.beenReverted = false
 
     --sets the video to the original pause state
