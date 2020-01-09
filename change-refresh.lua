@@ -41,7 +41,7 @@ require 'mp.options'
 --options available through --script-opts=changerefresh-[option]=value
 --all of these options can be changed at runtime using profiles, the script will automatically update
 local options = {
-    --the location of nircmd.exe, tries to use the %Path% by default
+    --the location of nircmd.exe, tries to use the system path by default
     nircmd = "nircmd",
 
     --list of valid refresh rates, separated by semicolon, listed in ascending order
@@ -54,22 +54,30 @@ local options = {
     --change refresh automatically on startup
     auto = false,
 
+    --colour bit depth to send to nircmd
+    --you shouldn't need to change this, but it's here just in case
+    bdepth = "32",
+
     --set whether to use the estimated fps or the container fps
     --see https://mpv.io/manual/master/#command-interface-container-fps for details
     estimated_fps = false,
 
-    --automatically detect monitor resolution when switching
+    --automatically detect monitor resolution when changing refresh rates
     --will use this resolution when reverting changes
     detect_monitor_resolution = true,
 
-    --default width and height to use when reverting the refresh rate
+    --default width and height to use when changing & reverting the refresh rate
     --ony used if detect_monitor_resolution is false
     original_width = "1920",
     original_height = "1080",
 
-    --if true, sets the monitor to 2160p when the resolution of the video is greater than 1440p
-    --if less the monitor will be set to the default shown above, or to the current resolution
+    --if true, sets the monitor to the specified dimensions when the resolution of the video is greater than or equal to the threshold
+    --if less than the threshold the monitor will be set to the default shown above, or to the current resolution
+    --this feature is only really useful if you don't want to be upscaling video up to UHD, but still want to play UHD files
     UHD_adaptive = false,
+    UHD_threshold = 1440,
+    UHD_width = "3840",
+    UHD_height = "2160",
 
     --set whether to output status messages to the osd
     osd_output = true
@@ -83,7 +91,6 @@ local var = {
     original_height = options.original_height,
     current_width = "",
     current_height = "",
-    bdepth = "32",
 
     --saved as numbers
     original_fps = 0,
@@ -203,10 +210,10 @@ function changeCurrentDisplay(width, height, rate)
         revertRefresh()
     end
 
-    setCurrentRes()
-
     --if beenReverted=true, then the current display settings may not be saved
     if (var.beenReverted == true) then
+        setCurrentRes()
+
         --saves the actual resolution only if option set, otherwise uses the defaults
         msg.verbose('saving original resolution: ' .. var.current_width .. 'x' .. var.current_height)
         var.original_width, var.original_height = var.current_width, var.current_height
@@ -226,7 +233,7 @@ end
 function changeRefresh(width, height, rate, display)
     rate = tostring(rate)
 
-    msg.verbose('calling nircmd with command: ' .. options.nircmd .. " setdisplay monitor:" .. display .. " " .. width .. " " .. height .. " " .. var.bdepth .. " " .. rate)
+    msg.verbose('calling nircmd with command: ' .. options.nircmd .. " setdisplay monitor:" .. display .. " " .. width .. " " .. height .. " " .. options.bdepth .. " " .. rate)
 
     msg.info("changing display " .. display .. " to " .. width .. "x" .. height .. " " .. rate .. "Hz")
 
@@ -244,7 +251,7 @@ function changeRefresh(width, height, rate, display)
             [3] = "monitor:" .. display,
             [4] = width,
             [5] = height,
-            [6] = var.bdepth,
+            [6] = options.bdepth,
             [7] = rate
         }
     })
@@ -320,21 +327,21 @@ end
 
 --chooses a width and height to switch the display to based on the resolution of the video
 function getModifiedWidthHeight(width, height)
-    setCurrentRes()
-
     --if UHD adaptive is disabled then it doesn't matter what the video resolution is it'll just use the current resolution
     if (options.UHD_adaptive == false) then
-        height = var.original_height
-        width = var.original_width
+        setCurrentRes()
+        height = var.current_height
+        width = var.current_width
         goto functionend
     end
     --sets the monitor to 2160p if an UHD video is played, otherwise set to the default
-    if (height < 1440) then
+    if (height < options.UHD_threshold) then
+        setCurrentRes()
         height = var.current_height
         width = var.current_width
     else
-        height = 2160
-        width = 3840
+        height = options.UHD_height
+        width = options.UHD_width
     end
 
     ::functionend::
