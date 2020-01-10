@@ -41,6 +41,10 @@ local o = {
     --default action
     default = "nothing",
 
+    --runs the action every time the player quits
+    --normally actions are only run when playback ends naturally
+    run_on_quit = false,
+
     --set whether to output status messages to the OSD by default
     osd_output = true
 }
@@ -157,14 +161,29 @@ function eof()
 end
 
 --runs when the file is closed.
---runs the command if the reason fr the close was eof.
+--runs the command if the reason for the close was eof.
 --this is necessary because the eof property is set to nil immediately,
---so it can't return true for the above function
+--so it can't return true for the above function. We don't want to run
+--the action when the user quits themselves, so we need an extra check
 function end_file(event)
-    msg.debug('end-file: ' .. utils.to_string(event))
-    if event.reason == "eof" then
+    msg.debug('event: ' .. utils.to_string(event))
+
+    local reason = ""
+    if event.event == "end-file" then
+        msg.debug('saving reason for end-file: "' .. event.reason .. '"')
+        reason = event.reason
+        return
+    end
+
+    --since switching files in a playlist seems to have the same 
+    if reason == "eof" or o.run_on_quit
+    then
         run_action()
     end
+end
+
+function shutdown(event)
+    msg.verbose(utils.to_string(event))
 end
 
 --sets the default option on mpv player launch
@@ -174,6 +193,7 @@ set_action(o.default)
 --runs eof functions when status changes
 mp.observe_property('eof-reached', nil, eof)
 mp.register_event('end-file', end_file)
+mp.register_event('shutdown', end_file)
 
 mp.register_script_message('after-playback', set_action)
 
