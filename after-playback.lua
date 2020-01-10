@@ -41,9 +41,9 @@ local o = {
     --default action
     default = "nothing",
 
-    --runs the action every time the player quits
+    --runs the action every time the player shuts down
     --normally actions are only run when playback ends naturally
-    run_on_quit = false,
+    run_on_shutdown = false,
 
     --set whether to output status messages to the OSD by default
     osd_output = true
@@ -176,14 +176,10 @@ function end_file(event)
     end
 
     --since switching files in a playlist seems to have the same 
-    if reason == "eof" or o.run_on_quit
+    if reason == "eof" or o.run_on_shutdown
     then
         run_action()
     end
-end
-
-function shutdown(event)
-    msg.verbose(utils.to_string(event))
 end
 
 --sets the default option on mpv player launch
