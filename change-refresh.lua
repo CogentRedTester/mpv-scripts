@@ -32,6 +32,8 @@ You can also send refresh change commands directly using script messages:
     script-message change-refresh [width] [height] [rate]
 
 These manual changes bypass the whitelist and rate associations and are sent to nircmd directly, so make sure you send a valid integer
+
+Note that if the mpv window is lying across multiple displays it may not save the original refresh rate of the correct display
 ]]--
 
 msg = require 'mp.msg'
@@ -68,10 +70,10 @@ local options = {
 
     --automatically detect monitor resolution when changing refresh rates
     --will use this resolution when reverting changes
-    detect_monitor_resolution = true,
+    detect_display_resolution = true,
 
     --default width and height to use when changing & reverting the refresh rate
-    --ony used if detect_monitor_resolution is false
+    --ony used if detect_display_resolution is false
     original_width = "1920",
     original_height = "1080",
 
@@ -188,7 +190,7 @@ end
 --the res the player must switch into and out of fullscreen. Doing so multiple times would be annoying, so
 --this function makes sure it will only happen once, no matter which command is sent
 function setCurrentRes()
-    if options.detect_monitor_resolution and var.current_width == "" then
+    if options.detect_display_resolution and var.current_width == "" then
         var.current_width, var.current_height = getDisplayResolution()
     elseif var.current_width == "" then
         var.current_width, var.current_height = options.original_width, options.original_height
