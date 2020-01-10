@@ -12,10 +12,14 @@ o = {
 
     --runs this profile when in music mode and a non-audio file is loaded
     --you should essentially put all your defaults that the music profile changed in here
-    undo_profile = ""
+    undo_profile = "",
+
+    --dispays the metadata of the track on the osd when music mode is on
+    --there is also a script message to enable this seperately
+    show_metadata = false
 }
 
-opt.read_options(o, 'music_mode')
+opt.read_options(o, 'musicmode')
 
 --splits the string into a table on the semicolons
 function split(inputstr)
@@ -50,6 +54,10 @@ function activate()
     mp.commandv('apply-profile', o.profile)
     mp.osd_message('Music Mode enabled')
 
+    if o.show_metadata then
+        show_metadata("on")
+    end
+
     musicMode = true
 end
 
@@ -58,6 +66,10 @@ function deactivate()
     msg.verbose('extension not in whitelist, applying undo profile "' .. o.undo_profile .. '"')
     mp.commandv('apply-profile', o.undo_profile)
     mp.osd_message('Music Mode disabled')
+
+    if o.show_metadata then
+        show_metadata('off')
+    end
 
     musicMode = false
 end
@@ -137,6 +149,46 @@ function lock_script_message(command)
     end
 end
 
+--manages timer to show metadata on osd
+--object modified from https://gist.github.com/AirPort/694d919b16246bc3130c8cc302415a89
+metadata = {
+    timer = nil,
+    
+	show = (function(self)
+		mp.command("show-text ${filtered-metadata} 2000")
+    end),
+    
+    start_showing = (function(self)
+        msg.verbose('showing metadata')
+        self:show()
+        metadata.timer = mp.add_periodic_timer(2, (function () self:show() end))
+    end),
+
+    stop_showing = (function (self)
+        if self.timer == nil then return end
+        msg.verbose('disabling metadata')
+        metadata.timer:stop()
+        mp.osd_message("")
+    end)
+}
+
+--changes visibility of metadata
+function show_metadata(command)
+    if command == "on" or command == nil then
+        metadata:start_showing()
+    elseif command == "off" then
+        metadata:stop_showing()
+    elseif command == "toggle" then
+        if metadata.timer == nil or metadata.timer:is_enabled() == false then
+            metadata:start_showing()
+        elseif metadata.timer:is_enabled() then
+            metadata:stop_showing()
+        end
+    else
+        msg.warn('unknown command "' .. command .. '"')
+    end
+end
+
 --turns music mode on
 --accepts arguments: 'on', 'off', 'toggle'
 mp.register_script_message('music-mode', script_message)
@@ -144,5 +196,9 @@ mp.register_script_message('music-mode', script_message)
 --stops the script from switching modes on file loads
 ----accepts arguments: 'on', 'off', 'toggle'
 mp.register_script_message('music-mode-lock', lock_script_message)
+
+--shows file metadata on osc
+--accepts arguments: 'on' 'off' 'toggle'
+mp.register_script_message('show-metadata', show_metadata)
 
 mp.register_event('file-loaded', fileLoaded)
