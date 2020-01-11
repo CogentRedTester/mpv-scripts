@@ -37,22 +37,17 @@ local imageExts = {}
 local audioExts = {}
 
 --splits the string into a table on the semicolons
-function split(inputstr)
+function create_table(input)
     local t={}
-    for str in string.gmatch(inputstr, "([^;]+)") do
-            table.insert(t, str)
+    for str in string.gmatch(input, "([^;]+)") do
+            t[str] = true
     end
     return t
 end
 
 --returns true if the variable exists in the table
-function inTable(var, table)
-    for i = 1, #table, 1 do
-        if (var == table[i]) then
-            return true
-        end
-    end
-    return false
+function in_table(var, t)
+    return t[var]
 end
 
 --processes the option strings to ensure they work with the script
@@ -63,9 +58,9 @@ function processStrings()
     o.audioExts = string.lower(o.audioExts)
 
     --splits the strings into tables
-    filenames = split(o.filenames)
-    imageExts = split(o.imageExts)
-    audioExts = split(o.audioExts)
+    filenames = create_table(o.filenames)
+    imageExts = create_table(o.imageExts)
+    audioExts = create_table(o.audioExts)
 end
 
 --loads a placeholder image as cover art for the file
@@ -79,7 +74,6 @@ function loadPlaceholder()
     mp.commandv('video-add', path)
 end
 
-
 function checkForCoverart()
     --finds the local directory of the file
 
@@ -91,7 +85,7 @@ function checkForCoverart()
     --does not look for cover art if the file does not have a valid extension
     local ext = filepath:sub(filepath:find([[.[^.]*$]]) + 1)
     msg.verbose('file extension: ' .. ext)
-    if o.audioExts ~= "" and inTable(ext, audioExts) == false then
+    if o.audioExts ~= "" and not in_table(ext, audioExts) then
         msg.verbose('file does not have valid extension, aborting coverart search')
         --loads a placeholder image if no covers were found and a window is forced
         if o.always_use_placeholder then
@@ -111,7 +105,6 @@ function checkForCoverart()
     --splits the directory and filename apart
     local directory, filename = utils.split_path(path)
     msg.verbose('directory: ' .. directory)
-    msg.verbose('file: ' .. filename)
 
     --loads the files from the directory
     files = utils.readdir(directory, "files")
@@ -126,8 +119,8 @@ function checkForCoverart()
         local index = string.find(file, [[.[^.]*$]])
         local fileext = file:sub(index + 1)
 
-        --if file extension is not an image then stops processStrings
-        if o.imageExts ~= "" and not inTable(fileext, imageExts) then
+        --if file extension is not an image then moves to the next file
+        if o.imageExts ~= "" and not in_table(fileext, imageExts) then
             msg.debug('"' .. fileext .. '" not in whitelist')
             goto continue
         else
@@ -138,14 +131,13 @@ function checkForCoverart()
         local filename = file:sub(0, index - 1)
 
         --if the name matches one in the whitelist
-        if inTable(filename, filenames) or o.load_all then
+        if in_table(filename, filenames) or o.load_all then
             msg.verbose(file .. ' found in whitelist - adding as extra video track...')
             local path = utils.join_path(directory, file)
 
             --adds the new file to the playing list
             --if there is no video track currently selected then it autoloads track #1
-            msg.verbose('current video track: ' .. mp.get_property('vid'))
-            if mp.get_property('vid') == "no" then
+            if mp.get_property_number('vid', 0) == 0 then
                 mp.commandv('video-add', path)
             else
                 mp.commandv('video-add', path, "auto")
