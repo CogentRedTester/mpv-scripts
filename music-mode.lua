@@ -22,26 +22,21 @@ o = {
 opt.read_options(o, 'musicmode')
 
 --splits the string into a table on the semicolons
-function split(inputstr)
+function create_table(input)
     local t={}
-    for str in string.gmatch(inputstr, "([^;]+)") do
-            table.insert(t, str)
+    for str in string.gmatch(input, "([^;]+)") do
+            t[str] = true
     end
     return t
 end
 
 --returns true if the variable exists in the table
-function inTable(var, table)
-    for i = 1, #table, 1 do
-        if (var == table[i]) then
-            return true
-        end
-    end
-    return false
+function in_table(var, t)
+    return t[var]
 end
 
 --stores a table of the extensions
-local exts = split(o.exts)
+local exts = create_table(o.exts)
 
 --to prevent superfluous loading of profiles the script keeps track of when music mode is enabled
 local musicMode = false
@@ -50,7 +45,6 @@ local locked = false
 
 --enabled music mode
 function activate()
-    msg.verbose('extension in whitelist, applying profile "' .. o.profile .. '"')
     mp.commandv('apply-profile', o.profile)
     mp.osd_message('Music Mode enabled')
 
@@ -63,7 +57,6 @@ end
 
 --disables music mode
 function deactivate()
-    msg.verbose('extension not in whitelist, applying undo profile "' .. o.undo_profile .. '"')
     mp.commandv('apply-profile', o.undo_profile)
     mp.osd_message('Music Mode disabled')
 
@@ -85,11 +78,13 @@ function main()
     msg.verbose('extracted extension: ' .. ext)
 
     --if the extension is a valid audio extension then it switches to music mode
-    if inTable(ext, exts) then
-        if musicMode == false then
+    if in_table(ext, exts) then
+        msg.verbose('extension in whitelist, applying profile "' .. o.profile .. '"')
+        if not musicMode then
             activate()
         end
     elseif o.undo_profile ~= "" and musicMode then
+        msg.verbose('extension not in whitelist, applying undo profile "' .. o.undo_profile .. '"')
         deactivate()
     else
         msg.verbose('extension not in whitelist, doing nothing')
@@ -97,7 +92,7 @@ function main()
 end
 
 --runs when the file is loaded, if script is locked it will do nothing
-function fileLoaded()
+function file_loaded()
     if locked == false then
         main()
     end
@@ -150,8 +145,8 @@ function lock_script_message(command)
 end
 
 --manages timer to show metadata on osd
---object modified from https://gist.github.com/AirPort/694d919b16246bc3130c8cc302415a89
-metadata = {
+--object based on: https://gist.github.com/AirPort/694d919b16246bc3130c8cc302415a89
+local metadata = {
     timer = nil,
     
 	show = (function(self)
@@ -161,16 +156,18 @@ metadata = {
     start_showing = (function(self)
         msg.verbose('showing metadata')
         self:show()
-        metadata.timer = mp.add_periodic_timer(2, (function () self:show() end))
+        self.timer:resume()
     end),
 
     stop_showing = (function (self)
-        if self.timer == nil then return end
         msg.verbose('disabling metadata')
-        metadata.timer:stop()
+        self.timer:stop()
         mp.osd_message("")
     end)
 }
+
+metadata.timer = mp.add_periodic_timer(2, (function () metadata:show() end))
+metadata.timer:stop()
 
 --changes visibility of metadata
 function show_metadata(command)
@@ -179,7 +176,7 @@ function show_metadata(command)
     elseif command == "off" then
         metadata:stop_showing()
     elseif command == "toggle" then
-        if metadata.timer == nil or metadata.timer:is_enabled() == false then
+        if metadata.timer:is_enabled() == false then
             metadata:start_showing()
         elseif metadata.timer:is_enabled() then
             metadata:stop_showing()
@@ -201,4 +198,4 @@ mp.register_script_message('music-mode-lock', lock_script_message)
 --accepts arguments: 'on' 'off' 'toggle'
 mp.register_script_message('show-metadata', show_metadata)
 
-mp.register_event('file-loaded', fileLoaded)
+mp.register_event('file-loaded', file_loaded)
