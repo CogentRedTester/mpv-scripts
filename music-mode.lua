@@ -1,12 +1,10 @@
 --simple script which loads a music profile whenever an audio file is played
+--an audio file is one with no video track, or when its video track has an fps < 2 (an image file)
 
 msg = require 'mp.msg'
 opt = require 'mp.options'
 
 o = {
-    --valid extensions to run music-mode
-    exts = 'mp3;wav;ogm;flac;m4a;wma;ogg;opus;alac;mka;aiff',
-
     --profile to call when valid extension is found
     profile = "music",
 
@@ -21,22 +19,17 @@ o = {
 
 opt.read_options(o, 'musicmode')
 
---splits the string into a table on the semicolons
-function create_table(input)
-    local t={}
-    for str in string.gmatch(input, "([^;]+)") do
-            t[str] = true
+--a music file has no video track, or the video track is less than 2 fps (an image file)
+function is_audio_file()
+    if mp.get_property_number('vid', 0) == 0 then
+        return true
+    else
+        if mp.get_property_number('container-fps', 0) < 2 and mp.get_property_number('aid', 0) ~= 0 then
+            return true
+        end
     end
-    return t
+    return false
 end
-
---returns true if the variable exists in the table
-function in_table(var, t)
-    return t[var]
-end
-
---stores a table of the extensions
-local exts = create_table(o.exts)
 
 --to prevent superfluous loading of profiles the script keeps track of when music mode is enabled
 local musicMode = false
@@ -78,7 +71,7 @@ function main()
     msg.verbose('extracted extension: ' .. ext)
 
     --if the extension is a valid audio extension then it switches to music mode
-    if in_table(ext, exts) then
+    if is_audio_file() then
         msg.verbose('extension in whitelist, applying profile "' .. o.profile .. '"')
         if not musicMode then
             activate()
