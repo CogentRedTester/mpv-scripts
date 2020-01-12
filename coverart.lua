@@ -8,33 +8,28 @@ opt = require 'mp.options'
 local o = {
     --list of names of valid cover art, must be separated by semicolons with no spaces
     --the script is not case specific
-    --any file with valid filenames and valid image extensions are loaded
-    filenames = "cover;folder;album;front",
+    --any file with valid names and valid image extensions are loaded
+    --if set to blank then image files with any name will be loaded
+    names = "cover;folder;album;front",
 
-    --ignore the filename and load all image files
-    load_all = false,
-
-    --valid image extensions, same syntax as the filenames option
+    --valid image extensions, same syntax as the names option
     --leaving it blank will load files of any type (with the matching filename)
+    --leaving both lists blank is not a good idea
     imageExts = 'jpg;jpeg;png;bmp;gif',
 
-    --only loads cover art when playing files with these extensions
-    --setting it to blank will cause the script to treat all files as audio files
-    audioExts = 'mp3;wav;ogm;flac;m4a;wma;ogg;opus;alac;mka;aiff',
+    --by default it only loads coverart if it detects the file is an audio file
+    --an audio file is one with zero video tracks, or one where the first video track has < 2 fps (an image)
+    --if this option is set to true then it will search for coverart on every file
+    always_scan_coverart = false,
 
     --file path of a placeholder image to use if no cover art is found
     --will only be used if force-window is enabled
     --leaving it blank will be the same as disabling it
     placeholder = "",
-
-    --load the placeholder for all files, not just ones that match the audio extension whitelist
-    --still only activates the placeholder when force-window is enabled
-    always_use_placeholder = true
 }
 
-local filenames = {}
+local names = {}
 local imageExts = {}
-local audioExts = {}
 
 --splits the string into a table on the semicolons
 function create_table(input)
@@ -45,22 +40,27 @@ function create_table(input)
     return t
 end
 
---returns true if the variable exists in the table
-function in_table(var, t)
-    return t[var]
+--a music file has no video track, or the video track is less than 2 fps (an image file)
+function is_audio_file()
+    if mp.get_property_number('vid', 0) == 0 then
+        return true
+    else
+        if mp.get_property_number('container-fps', 0) < 2 and mp.get_property_number('aid', 0) ~= 0 then
+            return true
+        end
+    end
+    return false
 end
 
 --processes the option strings to ensure they work with the script
 function processStrings()
     --sets everything to lowercase to avoid confusion
-    o.filenames = string.lower(o.filenames)
+    o.names = string.lower(o.names)
     o.imageExts = string.lower(o.imageExts)
-    o.audioExts = string.lower(o.audioExts)
 
     --splits the strings into tables
-    filenames = create_table(o.filenames)
+    names = create_table(o.names)
     imageExts = create_table(o.imageExts)
-    audioExts = create_table(o.audioExts)
 end
 
 --loads a placeholder image as cover art for the file
@@ -76,41 +76,40 @@ end
 
 function checkForCoverart()
     --finds the local directory of the file
-
     local workingDirectory = mp.get_property('working-directory')
     msg.verbose('working-directory: ' .. workingDirectory)
     local filepath = mp.get_property('path')
     msg.verbose('filepath: ' .. filepath)
 
-    --does not look for cover art if the file does not have a valid extension
-    local ext = filepath:sub(filepath:find([[.[^.]*$]]) + 1)
-    msg.verbose('file extension: ' .. ext)
-    if o.audioExts ~= "" and not in_table(ext, audioExts) then
-        msg.verbose('file does not have valid extension, aborting coverart search')
-        --loads a placeholder image if no covers were found and a window is forced
-        if o.always_use_placeholder then
-            loadPlaceholder()
-        end
+    --does not look for cover art if the file is not ana audio file
+    if not o.always_scan_coverart and not is_audio_file() then
+        msg.verbose('file is not an audio file, aborting coverart search')
+        loadPlaceholder()
         return
     end
 
     --converts the string into a compatible path for mpv to parse
     --only confirmed to work in windows, this is the part that may need to be changed for other operating systems
-    local path = utils.join_path(workingDirectory, filepath)
-    msg.verbose('full path: ' .. path)
-    path = path:gsub([[/.\]], [[/]])
-    path = path:gsub([[\]], [[/]])
-    msg.verbose('standardising characters, new path: ' .. path)
+    local exact_path = utils.join_path(workingDirectory, filepath)
+    msg.verbose('full path: ' .. exact_path)
+    exact_path = exact_path:gsub([[/.\]], [[/]])
+    exact_path = exact_path:gsub([[\]], [[/]])
+    msg.verbose('standardising characters, new path: ' .. exact_path)
 
     --splits the directory and filename apart
-    local directory, filename = utils.split_path(path)
+    local directory = utils.split_path(exact_path)
     msg.verbose('directory: ' .. directory)
 
     --loads the files from the directory
     files = utils.readdir(directory, "files")
+    if files == nil then
+        msg.verbose('no files could be loaded from directory')
+        files = {}
+    else
+        msg.verbose('scanning files in ' .. directory)
+    end
 
     --loops through the all the files in the directory to find if any are valid cover art
-    msg.verbose('scanning files in ' .. directory)
     for i = 1, #files, 1 do
         msg.debug('found file: ' .. files[i])
         local file = string.lower(files[i])
@@ -120,7 +119,7 @@ function checkForCoverart()
         local fileext = file:sub(index + 1)
 
         --if file extension is not an image then moves to the next file
-        if o.imageExts ~= "" and not in_table(fileext, imageExts) then
+        if o.imageExts ~= "" and not imageExts[fileext] then
             msg.debug('"' .. fileext .. '" not in whitelist')
             goto continue
         else
@@ -130,10 +129,10 @@ function checkForCoverart()
         --sets the file name
         local filename = file:sub(0, index - 1)
 
-        --if the name matches one in the whitelist
-        if in_table(filename, filenames) or o.load_all then
+        --if the name matches one in the whitelist then load it
+        if o.names == "" or names[filename] then
             msg.verbose(file .. ' found in whitelist - adding as extra video track...')
-            local path = utils.join_path(directory, file)
+            local path = utils.join_path(directory, files[i])
 
             --adds the new file to the playing list
             --if there is no video track currently selected then it autoloads track #1
