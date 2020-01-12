@@ -56,7 +56,7 @@ local active = false
 
 function osd_message(message)
     if o.osd_output then
-        mp.osd_message(message)
+        mp.osd_message(message, 2)
     end
 end
 
@@ -128,13 +128,16 @@ end
 function run_action()
     if active == false then return end
 
-    osd_message('executing command  ' .. current_action)
+    osd_message('executing command "' .. current_action .. '"')
     msg.info('executing command "' .. current_action .. '"')
-    mp.command_native({
-        name = 'subprocess',
-        playback_only = false,
-        args = commands
-    })
+
+    mp.add_timeout(2, function() 
+        mp.command_native({
+            name = 'subprocess',
+            playback_only = false,
+            args = commands
+        })
+    end)
 end
 
 --sends the abort command to nircmd to disable the shutdown and reboot commands
@@ -152,7 +155,7 @@ end
 --runs when the files eof property has changed
 --for some reason this is triggered after every seek?
 function eof()
-    local finished = mp.get_property_bool('eof-reached')
+    local finished = mp.get_property_bool('eof-reached', false)
     msg.debug('eof = ' .. tostring(finished))
     
     if finished then
@@ -165,17 +168,19 @@ end
 --this is necessary because the eof property is set to nil immediately,
 --so it can't return true for the above function. We don't want to run
 --the action when the user quits themselves, so we need an extra check
+local reason = ""
 function end_file(event)
     msg.debug('event: ' .. utils.to_string(event))
 
-    local reason = ""
+    --since switching files in a playlist seems to send the same reason end-file reason as a file finishing
+    --we can't just execute the command immediately. Therefore we save the latest reason for an end-file event
+    --and wait until the player shutsdown before sending the command
     if event.event == "end-file" then
         msg.debug('saving reason for end-file: "' .. event.reason .. '"')
         reason = event.reason
         return
     end
 
-    --since switching files in a playlist seems to have the same 
     if reason == "eof" or o.run_on_shutdown
     then
         run_action()
