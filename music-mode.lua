@@ -17,6 +17,7 @@
 msg = require 'mp.msg'
 opt = require 'mp.options'
 
+--script options, set these in script-opts
 o = {
     --profile to call when valid extension is found
     profile = "music",
@@ -49,7 +50,7 @@ local musicMode = false
 
 local locked = false
 
---enabled music mode
+--enables music mode
 function activate()
     mp.commandv('apply-profile', o.profile)
     mp.osd_message('Music Mode enabled')
@@ -74,10 +75,6 @@ function deactivate()
 end
 
 function main()
-    --finds the filename
-    local filename = mp.get_property('filename')
-    msg.verbose('"' .. filename .. '" loaded')
-
     --if the file is an audio file then the music profile is loaded
     if is_audio_file() then
         msg.verbose('audio file, applying profile "' .. o.profile .. '"')
@@ -92,12 +89,12 @@ end
 
 --runs when the file is loaded, if script is locked it will do nothing
 function file_loaded()
-    if locked == false then
+    if not locked then
         main()
     end
 end
- 
---toggles music mode
+
+--sets music mode from script-message
 function script_message(command)
     if command == "on" or command == nil then
         activate()
