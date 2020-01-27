@@ -123,7 +123,7 @@ function checkForCoverart()
             msg.debug('"' .. fileext .. '" not in whitelist')
             goto continue
         else
-            msg.debug('"' .. fileext .. '" in whitelist')
+            msg.debug('"' .. fileext .. '" in whitelist, checking for valid name...')
         end
 
         --sets the file name
