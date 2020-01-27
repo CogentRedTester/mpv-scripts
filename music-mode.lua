@@ -1,5 +1,18 @@
---simple script which loads a music profile whenever an audio file is played
---an audio file is one with no video track, or when its video track has an fps < 2 (an image file)
+--[[
+	A simple script which loads a music profile whenever an audio file is played.
+	An audio file is one with no video track, or when its video track has an fps < 2 (an image file).
+	There is also an option to set an 'undo' profile for when video files are loaded whilst in music mode
+
+	Profiles are only ever applied when switching between audio or video files, so you can change
+	settings while listening to a playlist and not have them be reset each track as long as the files are either
+	all audio, or all video.
+
+	The script assumes the file will be a video, so the undo profile will not be run on startup.
+
+	The script also adds a few script messages, one to enable/disable/toggle music mode,
+	one to lock the script so that it doesn't update automatically, and one to print file metadata to the screen.
+	Names and argument options are at the bottom of this script file.
+]]--
 
 msg = require 'mp.msg'
 opt = require 'mp.options'
@@ -65,7 +78,7 @@ function main()
     local filename = mp.get_property('filename')
     msg.verbose('"' .. filename .. '" loaded')
 
-    --if the extension is a valid audio extension then it switches to music mode
+    --if the file is an audio file then the music profile is loaded
     if is_audio_file() then
         msg.verbose('audio file, applying profile "' .. o.profile .. '"')
         if not musicMode then
@@ -172,7 +185,7 @@ function show_metadata(command)
     end
 end
 
---turns music mode on
+--sets music mode
 --accepts arguments: 'on', 'off', 'toggle'
 mp.register_script_message('music-mode', script_message)
 
