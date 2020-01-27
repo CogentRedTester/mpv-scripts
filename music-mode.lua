@@ -64,23 +64,16 @@ function main()
     --finds the filename
     local filename = mp.get_property('filename')
     msg.verbose('"' .. filename .. '" loaded')
-    
-    --finds the file extension
-    local index = string.find(filename, [[.[^.]*$]])
-    local ext = filename:sub(index + 1)
-    msg.verbose('extracted extension: ' .. ext)
 
     --if the extension is a valid audio extension then it switches to music mode
     if is_audio_file() then
-        msg.verbose('extension in whitelist, applying profile "' .. o.profile .. '"')
+        msg.verbose('audio file, applying profile "' .. o.profile .. '"')
         if not musicMode then
             activate()
         end
     elseif o.undo_profile ~= "" and musicMode then
-        msg.verbose('extension not in whitelist, applying undo profile "' .. o.undo_profile .. '"')
+        msg.verbose('video file, applying undo profile "' .. o.undo_profile .. '"')
         deactivate()
-    else
-        msg.verbose('extension not in whitelist, doing nothing')
     end
 end
 
