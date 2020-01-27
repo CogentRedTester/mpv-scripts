@@ -51,7 +51,7 @@ local o = {
 
 
 local commands = {}
-local current_action
+local current_action = "nothing"
 local active = false
 
 function osd_message(message)
@@ -131,13 +131,11 @@ function run_action()
     osd_message('executing command "' .. current_action .. '"')
     msg.info('executing command "' .. current_action .. '"')
 
-    mp.add_timeout(2, function() 
-        mp.command_native({
-            name = 'subprocess',
-            playback_only = false,
-            args = commands
-        })
-    end)
+    mp.command_native({
+        name = 'subprocess',
+        playback_only = false,
+        args = commands
+    })
 end
 
 --sends the abort command to nircmd to disable the shutdown and reboot commands
@@ -181,8 +179,10 @@ function end_file(event)
         return
     end
 
+    msg.debug('shutting down mpv, testing for shutdown reason')
     if reason == "eof" or o.run_on_shutdown
     then
+        msg.debug('shutdown caused by eof, running action')
         run_action()
     end
 end
@@ -190,6 +190,7 @@ end
 --sets the default option on mpv player launch
 opt.read_options(o, 'afterplayback')
 set_action(o.default)
+msg.verbose('default action after playback is "' .. current_action .. '"')
 
 --runs eof functions when status changes
 mp.observe_property('eof-reached', nil, eof)
