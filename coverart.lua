@@ -70,8 +70,8 @@ function loadPlaceholder()
     if not (mp.get_property('vid') == "no" and mp.get_property_bool('force-window')) then return end
 
     msg.verbose('file does not have video track, loading placeholder')
-    local path = mp.command_native({"expand-path", o.placeholder})
-    mp.commandv('video-add', path)
+    local placeholder = mp.command_native({"expand-path", o.placeholder})
+    mp.commandv('video-add', placeholder)
 end
 
 function checkForCoverart()
@@ -132,14 +132,14 @@ function checkForCoverart()
         --if the name matches one in the whitelist then load it
         if o.names == "" or names[filename] then
             msg.verbose(file .. ' found in whitelist - adding as extra video track...')
-            local path = utils.join_path(directory, files[i])
+            local coverart = utils.join_path(directory, files[i])
 
             --adds the new file to the playing list
             --if there is no video track currently selected then it autoloads track #1
             if mp.get_property_number('vid', 0) == 0 then
-                mp.commandv('video-add', path)
+                mp.commandv('video-add', coverart)
             else
-                mp.commandv('video-add', path, "auto")
+                mp.commandv('video-add', coverart, "auto")
             end
         end
 
