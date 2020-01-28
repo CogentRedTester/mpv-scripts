@@ -117,7 +117,7 @@ function main(str)
                         escape_char = "%%"
                     end
 
-                    msg.debug('checking for escape characters in "' .. commands[str][i][j][k] )
+                    msg.debug('checking for escape characters in "' .. commands[str][i][j][k] .. '"')
                     commands[str][i][j][k] = string.gsub(commands[str][i][j][k], escape_char .. o.cycle_seperator, o.cycle_seperator)
                     commands[str][i][j][k] = string.gsub(commands[str][i][j][k], escape_char .. o.command_seperator, o.command_seperator)
                     commands[str][i][j][k] = string.gsub(commands[str][i][j][k], escape_char .. o.word_seperator, o.word_seperator)
