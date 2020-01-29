@@ -156,7 +156,10 @@ function main(str)
     for j=1, #commands[str][i], 1 do
 
         --sends command native the array of words in the command
-        mp.command_native(commands[str][i][j])
+        local def, error = mp.command_native(commands[str][i][j], true)
+        if def then
+            msg.error('Error occurred for command: ' .. utils.to_string(commands[str][i][j]))
+        end
     end
 
     --moves the iterator forward
