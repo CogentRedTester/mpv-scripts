@@ -124,7 +124,7 @@ function main(str)
 
     --if there is nothing saved for the current string, then runs through the process of storing the commands in the table
     if commands[str] == nil then
-        iterators[str] = 1
+        iterators[str] = 0
 
         msg.verbose('unknown cycle, creating command table')
 
@@ -150,23 +150,22 @@ function main(str)
         msg.verbose('command table complete')
     end
 
-    local i = iterators[str]
-
-    --runs each command in that cycle
-    for j=1, #commands[str][i], 1 do
-
-        --sends command native the array of words in the command
-        local def, error = mp.command_native(commands[str][i][j], true)
-        if def then
-            msg.error('Error occurred for command: ' .. utils.to_string(commands[str][i][j]))
-        end
-    end
-
     --moves the iterator forward
     iterators[str] = iterators[str] + 1
     if iterators[str] > #commands[str] then
         msg.verbose('reached end of cycle, wrapping back to start')
         iterators[str] = 1
+    end
+
+    local i = iterators[str]
+
+    --runs each command in that cycle
+    for j=1, #commands[str][i], 1 do
+        --sends command native the array of words in the command
+        local def, error = mp.command_native(commands[str][i][j], true)
+        if def then
+            msg.error('Error occurred for command: ' .. utils.to_string(commands[str][i][j]))
+        end
     end
 end
 
