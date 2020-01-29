@@ -4,17 +4,18 @@
         script-message cycle-commands "commandline1|commandline2|commandline3"
 
     Everything between | is run like a normal command line in input.conf, this includes using semicolons to run multiple commands at once
-    If you need to send a command using the seperators, such as for multi-word strings, use the escape character "%"
+    If you need to send a command using multi-word strings use quotation marks.
     for example:
         
-        script-message cycle-commands "show-text one 1000 ;  print-text two | show-text three% four"
+        script-message cycle-commands "show-text one 1000 ;  print-text two | show-text 'three four'"
     
     This would, on keypress one, print 'one' to the OSD for 1 second and 'two' to the console, on keypress two 'three four' would be printed to the OSD
 
     There are no limits to the number of commands, and the script message can be used as often as one wants, the script stores the current iteration
     for each unique cycle command, so there should be no overlap unless one binds the exact same command string (including spacing)
 
-    If you want to change the characters for the seperators use script-opts
+    If you want to change the characters for the seperators use script-opts, however, I haven't tested this script with any other characters,
+    so I can't guarantee they'll work. I recommend not changing anything.
 ]]--
 
 
@@ -33,40 +34,74 @@ o = {
 
     --seperates words in commands
     word_seperator = ' ',
-
-    --place before a seperator treat as part of the string, useful for passing multi-word strings
-    --use two of these characters to pass the normal escape character
-    escape_char = "%",
-
 }
 
 opt.read_options(o, 'cycle-commands')
 
+--tests if the character at the specified position is a seperator character
+function is_seperator(inputstr, position)
+    local sep = inputstr:find('['..o.cycle_seperator .. o.command_seperator .. o.word_seperator..']', position)
+
+    if sep == position then
+        return true
+    else
+        return false
+    end
+end
+
 --splits the string into an array of strings around the separator
 function splitString(inputstr, seperator)
     local t = {}
-    local escape = false
     msg.debug('splitting "' .. inputstr .. '" around "' .. seperator .. '"')
 
-    local istr = inputstr
-    inputstr = inputstr:gsub("%" .. o.escape_char .. seperator .. seperator, "%" .. o.escape_char .. seperator .. o.word_seperator .. seperator)
-    if istr ~= inputstr then
-        msg.debug('two seperators found after escape char, modified string: "' .. inputstr .. '"')
-    end
+    while inputstr ~= "" do
+        local endstr
+        local char = ""
+        msg.debug('operating on string "' .. inputstr .. '"')
 
-    for str in string.gmatch(inputstr, "([^"..seperator.."]+)") do
-        if escape then
-            msg.debug('escape character found, extending "' .. t[#t] .. '" with "' .. seperator .. str .. '"')
-            t[#t] = t[#t] .. seperator .. str
-            escape = false
+        --removes all the seperator characters from the front of the substring
+        while is_seperator(inputstr, 1) do
+            inputstr = inputstr:sub(2)
+        end
+
+        --testing if the first character is a quote
+        local quote = inputstr:find('["\']')
+        if quote == 1 then
+            msg.verbose('quote found, encapsulating string')
+            char = inputstr:sub(1, 1)
+            --removing first quote from string
+            inputstr = inputstr:sub(2)
+
+            --finding the end of the quotes
+            endstr = inputstr:find(char, 2)
         else
-            msg.debug('inserting "' .. str .. '" into table')
-            table.insert(t, str)
+            --if no quote is found then it finds the next seperator
+            endstr = inputstr:find(seperator)
         end
-        
-        if (str:sub(-1) == o.escape_char) then
-            escape = true
+
+        --sets the end of the string to the full length if nothing could be found
+        if endstr == nil then
+            endstr = inputstr:len()
         end
+
+        --removes extra seperator characters from the end of the substring (put them in quotes if you want them)
+        local newstr = inputstr:sub(1, endstr)
+        msg.debug('operating on substring "' .. newstr .. '"')
+        while is_seperator(newstr, newstr:len()) do
+            endstr = endstr - 1
+            newstr = inputstr:sub(1, endstr)
+        end
+
+        --removes the last character if it's a quote and the first character of the substring is also a quote
+        if newstr:find(char, -1) and quote == 1 then
+            msg.debug('removing end quote')
+            inputstr = inputstr:sub(0, endstr - 1) .. inputstr:sub(endstr + 1)
+        end
+
+        newstr = inputstr:sub(1, endstr)
+        msg.verbose('inserting "' .. newstr .. '" to table')
+        table.insert(t, newstr)
+        inputstr = inputstr:sub(endstr + 1)
     end
     return t
 end
@@ -109,20 +144,6 @@ function main(str)
                 local t = splitString(commands[str][i][j], o.word_seperator)
                 msg.debug(utils.to_string(t))
                 commands[str][i][j] = t
-
-                --checks for escape characters
-                for k=1, #t, 1 do
-                    local escape_char = o.escape_char
-                    if escape_char == "%" then
-                        escape_char = "%%"
-                    end
-
-                    msg.debug('checking for escape characters in "' .. commands[str][i][j][k] .. '"')
-                    commands[str][i][j][k] = string.gsub(commands[str][i][j][k], escape_char .. o.cycle_seperator, o.cycle_seperator)
-                    commands[str][i][j][k] = string.gsub(commands[str][i][j][k], escape_char .. o.command_seperator, o.command_seperator)
-                    commands[str][i][j][k] = string.gsub(commands[str][i][j][k], escape_char .. o.word_seperator, o.word_seperator)
-                    msg.debug('cleaned string = ' .. commands[str][i][j][k])
-                end
             end
         end
 
