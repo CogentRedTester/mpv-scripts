@@ -30,10 +30,16 @@ Switches to a music profile when an audio file is being played and switches back
 ## playlist-shuffle
 shuffles the playlist and moves the current file to the start of the playlist
 
-# My modified scripts:
+# Modified scripts:
 
 ## autoload
 Exactly the same as the script available here:
 https://github.com/mpv-player/mpv/blob/master/TOOLS/lua/autoload.lua
 
 However, instead of loading automatically it only loads when a keybind is pressed (Ctrl+f8 by default)
+
+# Other scripts
+
+betterchapters: https://github.com/mpv-player/mpv/issues/4738#issuecomment-321298846
+
+nextfile: https://github.com/jonniek/mpv-nextfile 
