@@ -322,8 +322,9 @@ function getDisplayDetails()
     else
         msg.verbose('found comma in display list at pos ' .. tostring(name1) .. ', will use the first display')
 
-        --the display-fps property always refers to the first display in the display list
-        --so we must extract the first name from the list
+        --the display-fps property always refers to the display with the lowest refresh rate
+        --there is no way to test which display this is, so reverting the refresh when mpv is on multiple monitors is unpredictable
+        --however, by default I'm just selecting whatever the first monitor in the list is
         name = string.sub(name, 0, name1 - 1)
     end
 
