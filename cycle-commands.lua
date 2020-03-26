@@ -24,7 +24,8 @@ utils = require 'mp.utils'
 opt = require 'mp.options'
 
 --set the characters to use as seperators
---setting any of these to letters, numbers, or hyphens is a VERY bad idea
+--setting any of these to letters, numbers, or hyphens is a probably bad idea
+--I only included these for future compatability, I'd suggest not changing them
 o = {
     --seperates whole command lines
     cycle_seperator = '|',
@@ -57,15 +58,22 @@ function splitString(inputstr, seperator)
     while inputstr ~= "" do
         local endstr
         local char = ""
-        msg.debug('operating on string "' .. inputstr .. '"')
+        local quote = 0
 
         --removes all the seperator characters from the front of the substring
         while is_seperator(inputstr, 1) do
             inputstr = inputstr:sub(2)
         end
 
+        --skips the quotation check if it's not words being seperated
+        --this fixes some smart guy deciding to enclose the command name in quotes
+        --which would result in the command and its arguments being split in two
+        if seperator ~= o.word_seperator then
+            goto skip_Quote_Check
+        end
+
         --testing if the first character is a quote
-        local quote = inputstr:find('["\']')
+        quote = inputstr:find('["\']')
         if quote == 1 then
             msg.verbose('quote found, encapsulating string')
             char = inputstr:sub(1, 1)
@@ -74,34 +82,47 @@ function splitString(inputstr, seperator)
 
             --finding the end of the quotes
             endstr = inputstr:find(char, 2)
-        else
+        end
+
+        ::skip_Quote_Check::
+        if not (quote == 1) then
             --if no quote is found then it finds the next seperator
             endstr = inputstr:find(seperator)
         end
 
         --sets the end of the string to the full length if nothing could be found
+        --usually happens for the last item in an array (last word, last command, etc)
+        --also happens if someone forgets to include a close bracket, in that case the entire rest of the
+        --command is counted as one single long string.
         if endstr == nil then
             endstr = inputstr:len()
         end
 
         --removes extra seperator characters from the end of the substring (put them in quotes if you want them)
+        --this is never run if a quote is found
         local newstr = inputstr:sub(1, endstr)
         msg.debug('operating on substring "' .. newstr .. '"')
         while is_seperator(newstr, newstr:len()) do
-            endstr = endstr - 1
-            newstr = inputstr:sub(1, endstr)
+            newstr = newstr:sub(1, newstr:len() - 1)
         end
 
         --removes the last character if it's a quote and the first character of the substring is also a quote
         if newstr:find(char, -1) and quote == 1 then
             msg.debug('removing end quote')
-            inputstr = inputstr:sub(0, endstr - 1) .. inputstr:sub(endstr + 1)
+            endstr = endstr - 1
+            newstr = newstr:sub(1, endstr)
         end
 
-        newstr = inputstr:sub(1, endstr)
         msg.verbose('inserting "' .. newstr .. '" to table')
         table.insert(t, newstr)
-        inputstr = inputstr:sub(endstr + 1)
+
+        --if there was a quotation, then endstr points to the character before the quote,
+        --so we need to remove an extra character from inputstr
+        if quote == 1 then
+            inputstr = inputstr:sub(endstr + 2)
+        else
+            inputstr = inputstr:sub(endstr + 1)
+        end
     end
     return t
 end
@@ -111,22 +132,21 @@ commands = {}
 iterators = {}
 
 --[[
-the script stores the command in a 4D table
+the script stores the command in a table of 3D tables
 the table is in the format:
     table[full string][strings between '|'][strings between ';'][strings between ' ']
 Or alternatively:
     table[full string][cycle][command][word]
 
 examples: commands['show-text hello | show-text bye'][2][1][2] = 'bye'
-          commands['show-text one ; show-text two | show-text three'][1][2][2] = 'two'
+          commands["show-text one ; show-text 'two three' | show-text four"][1][2][2] = 'two three'
 ]]--
 function main(str)
 
     --if there is nothing saved for the current string, then runs through the process of storing the commands in the table
     if commands[str] == nil then
-        iterators[str] = 0
-
         msg.verbose('unknown cycle, creating command table')
+        iterators[str] = 0
 
         --splits each cycle around the character '|'
         local t = splitString(str, o.cycle_seperator)
