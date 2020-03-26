@@ -109,20 +109,12 @@ function splitString(inputstr, seperator)
         --removes the last character if it's a quote and the first character of the substring is also a quote
         if newstr:find(char, -1) and quote == 1 then
             msg.debug('removing end quote')
-            endstr = endstr - 1
-            newstr = newstr:sub(1, endstr)
+            newstr = newstr:sub(1, newstr:len() - 1)
         end
 
         msg.verbose('inserting "' .. newstr .. '" to table')
         table.insert(t, newstr)
-
-        --if there was a quotation, then endstr points to the character before the quote,
-        --so we need to remove an extra character from inputstr
-        if quote == 1 then
-            inputstr = inputstr:sub(endstr + 2)
-        else
-            inputstr = inputstr:sub(endstr + 1)
-        end
+        inputstr = inputstr:sub(endstr + 1)
     end
     return t
 end
