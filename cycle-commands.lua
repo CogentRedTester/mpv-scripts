@@ -77,8 +77,6 @@ function splitString(inputstr, seperator)
         if quote == 1 then
             msg.verbose('quote found, encapsulating string')
             char = inputstr:sub(1, 1)
-            --removing first quote from string
-            inputstr = inputstr:sub(2)
 
             --finding the end of the quotes
             endstr = inputstr:find(char, 2)
@@ -108,8 +106,7 @@ function splitString(inputstr, seperator)
 
         --removes the last character if it's a quote and the first character of the substring is also a quote
         if newstr:find(char, -1) and quote == 1 then
-            msg.debug('removing end quote')
-            newstr = newstr:sub(1, newstr:len() - 1)
+            newstr = newstr:sub(2, newstr:len() - 1)
         end
 
         msg.verbose('inserting "' .. newstr .. '" to table')
@@ -160,6 +157,7 @@ function main(str)
         end
 
         msg.verbose('command table complete')
+        msg.debug(utils.to_string(commands[str]))
     end
 
     --moves the iterator forward
@@ -171,12 +169,14 @@ function main(str)
 
     local i = iterators[str]
 
+    msg.verbose('sending commands: ' .. utils.to_string(commands[str][i]))
     --runs each command in that cycle
     for j=1, #commands[str][i], 1 do
         --sends command native the array of words in the command
+        
         local def, error = mp.command_native(commands[str][i][j], true)
         if def then
-            msg.error('Error occurred for command: ' .. utils.to_string(commands[str][i][j]))
+            msg.error('Error occurred for commands: ' .. utils.to_string(commands[str][i][j]))
         end
     end
 end
