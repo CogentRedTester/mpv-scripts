@@ -42,7 +42,7 @@ do
 end
 
 function setFTPOpts()
-    msg.verbose('FTP protocol detected')
+    msg.info('FTP protocol detected - modifying settings')
     ftp = true
     path = mp.get_property('path')
 
@@ -56,7 +56,7 @@ function setFTPOpts()
 
     --if there is no period in the filename then the file is actually a directory
     if not filename:find('%.') then
-        msg.verbose('directory loaded - attempting to load playlist file')
+        msg.info('directory loaded - attempting to load playlist file')
         --if the filename is nill, then the path ends with a /
         if filename == nil then
             path = path .. o.directory_playlist
@@ -76,26 +76,6 @@ function setFTPOpts()
     mp.set_property('ordered-chapters-files', playlist)
 end
 
---tests if the file being opened uses the ftp protocol
-function testFTP()
-    --reloading a file with corrected addresses causes this function to be rerun.
-    --this check prevents the function from being run twice for each file
-    if replacingFile then
-        replacingFile = false
-        msg.verbose('skipping ftp configuration because script reloaded same file')
-        return
-    end
-
-    ftp = false
-    msg.verbose('checking for ftp protocol')
-    path = mp.get_property('path')
-    msg.verbose("got past here")
-    local protocol = path:sub(1, 3)
-    if protocol == "ftp" then
-        setFTPOpts()
-    end
-
-end
 
 local prevSub
 local subChanging = false
@@ -116,6 +96,7 @@ function addSubtitle(sub)
         msg.verbose('revised sub file was still not valid - cancelling event loop')
         return
     end
+    msg.info('attempting to add revised file address')
     mp.commandv('sub-add', sub)
     subChanging = true
     prevSub = sub
@@ -133,9 +114,28 @@ end
 
 --tracks if the subtitle addition was successful
 function trackChange()
-
     subChanging = false
-    msg.verbose('track changed')
+    if not ftp then return end
+    msg.debug('track changed')
+end
+
+--tests if the file being opened uses the ftp protocol
+function testFTP()
+    --reloading a file with corrected addresses causes this function to be rerun.
+    --this check prevents the function from being run twice for each file
+    if replacingFile then
+        replacingFile = false
+        msg.verbose('skipping ftp configuration because script reloaded same file')
+        return
+    end
+
+    ftp = false
+    msg.verbose('checking for ftp protocol')
+    path = mp.get_property('path')
+    local protocol = path:sub(1, 3)
+    if protocol == "ftp" then
+        setFTPOpts()
+    end
 end
 
 mp.observe_property('track-list', nil, trackChange)
