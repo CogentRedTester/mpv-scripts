@@ -24,6 +24,9 @@ Cycles through a list of profiles sent via a script message and prints the profi
 ## editions-notification
 Prints a message on the OSD if editions are found in the file, and temporarily switches the osd-playing-message to the editions-list property when switching. This makes it easier to tell the number and names while navigating editions.
 
+## ftp-opts
+Changes some options when using the ftp protocol. Currently just sets the ordered-chapters-files option to look for a playlist in the source directory.
+
 ## music-mode
 Switches to a music profile when an audio file is being played and switches back when a non-audio file is played
 
