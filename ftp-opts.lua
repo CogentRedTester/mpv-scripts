@@ -25,9 +25,9 @@ opt.read_options(o, 'ftp-opts', function() msg.debug('options updated') end)
 
 local ftp = false
 local path
-local replacingFile = false
 
 --decodes a URL address
+--this piece of code was taken from: https://stackoverflow.com/questions/20405985/lua-decodeuri-luvit/20406960#20406960
 local decodeURI
 do
     local char, gsub, tonumber = string.char, string.gsub, tonumber
@@ -41,10 +41,9 @@ do
     end
 end
 
+--runs all of the custom operations for ftp files
 function setFTPOpts()
     msg.info('FTP protocol detected - modifying settings')
-    ftp = true
-    path = mp.get_property('path')
 
     --converts the path into a valid string
     path = path:gsub([[\]],[[/]])
@@ -52,33 +51,31 @@ function setFTPOpts()
 
     local directory = path:sub(1, path:find("/[^/]*$"))
     local filename = path:sub(path:find("/[^/]*$") + 1)
-    local playlist = directory .. 'playlist.pls'
+
+    --sets ordered chapters to use a playlist file inside the directory
+    mp.set_property('ordered-chapters-files', directory .. '/' .. o.ordered_chapter_playlist)
 
     --if there is no period in the filename then the file is actually a directory
     if not filename:find('%.') then
         msg.info('directory loaded - attempting to load playlist file')
-        --if the filename is nill, then the path ends with a /
-        if filename == nil then
-            path = path .. o.directory_playlist
-        else
-            path = path .. "/" .. o.directory_playlist
-        end
+        path = path .. "/" .. o.directory_playlist
     end
 
-    --reloads the file, replacing the old one, 
+    --reloads the file, replacing the old one
+    --does not run if decodeURI did not change any characters in the address
     if path ~= mp.get_property('path') then
+        msg.info('attempting to reload file with corrected path')
         local pos = mp.get_property_number('playlist-pos')
+        local endPlaylist = mp.get_property_number('playlist-count', 0)
+        mp.commandv('loadfile', path, 'append')
+        mp.commandv('playlist-move', endPlaylist, pos+1)
         mp.commandv('playlist-remove', pos)
-        mp.commandv('loadfile', path, 'append-play')
-        replacingFile = true
     end
-    --mp.set_property
-    mp.set_property('ordered-chapters-files', playlist)
 end
 
-
+--stores the previous sub so that we can detect infinite file loops caused by a
+--completely invalid URL
 local prevSub
-local subChanging = false
 
 --converts the URL of an errored subtitle and tries adding it again
 function addSubtitle(sub)
@@ -89,16 +86,16 @@ function addSubtitle(sub)
     sub = sub:sub(1, -3)
     sub = decodeURI(sub)
 
-    --if this sub was the same as the prev and the addition was not successful, then cancel the function
+    --if this sub was the same as the prev, then cancel the function
     --otherwise this would cause an infinite loop
-    if (sub == prevSub) and subChanging then
-        print(subChanging)
+    --this is different behaviour from mpv default since you can't add the same file twice in a row
+    --but I don't know of any reason why one would do that, so I'm leaving it like this
+    if (sub == prevSub) then
         msg.verbose('revised sub file was still not valid - cancelling event loop')
         return
     end
     msg.info('attempting to add revised file address')
     mp.commandv('sub-add', sub)
-    subChanging = true
     prevSub = sub
 end
 
@@ -112,33 +109,25 @@ function parseMessage(event)
     end
 end
 
---tracks if the subtitle addition was successful
-function trackChange()
-    subChanging = false
-    if not ftp then return end
-    msg.debug('track changed')
-end
-
 --tests if the file being opened uses the ftp protocol
 function testFTP()
     --reloading a file with corrected addresses causes this function to be rerun.
     --this check prevents the function from being run twice for each file
-    if replacingFile then
-        replacingFile = false
+    if path == mp.get_property('path') then
         msg.verbose('skipping ftp configuration because script reloaded same file')
         return
     end
 
     ftp = false
-    msg.verbose('checking for ftp protocol')
     path = mp.get_property('path')
+
+    msg.verbose('checking for ftp protocol')
     local protocol = path:sub(1, 3)
     if protocol == "ftp" then
+        ftp = true
         setFTPOpts()
     end
 end
-
-mp.observe_property('track-list', nil, trackChange)
 
 --scans warning messages to tell if a subtitle track was incorrectly added
 mp.enable_messages('warn')
