@@ -79,7 +79,7 @@ local options = {
 
     --if enabled, this mode sets the monitor to the specified dimensions when the resolution of the video is greater than or equal to the threshold
     --if less than the threshold the monitor will be set to the default shown above, or to the current resolution
-    --this feature is only really useful if you don't want to be upscaling video to UHD, but still want to play UHD files
+    --this feature is only really useful if you don't want to be upscaling video to UHD, but still want to play UHD files in native resolution
     UHD_adaptive = false,
     UHD_threshold = 1440,
     UHD_width = "3840",
@@ -248,7 +248,7 @@ function changeRefresh(width, height, rate, display)
     mp.set_property_bool("pause", true)
     
     local time = mp.get_time()
-    mp.command_native({
+    local process = mp.command_native({
         ["name"] = 'subprocess',
         ["playback_only"] = false,
         ["args"] = {
@@ -261,6 +261,14 @@ function changeRefresh(width, height, rate, display)
             [7] = rate
         }
     })
+
+    if (process.status < 0) then
+        local error = process.error_string
+        msg.error('Error sending command')
+        if error == "init" then
+            msg.error('could not start nircmd - make sure you are using the right path')
+        end
+    end
 
     --pauses the player for a set duration of seconds while the display is switching
     while
