@@ -1,5 +1,5 @@
 --[[
-    This script dynamically changes some settings at runtime when playing files over te ftp protocol
+    This script dynamically changes some settings at runtime while playing files over the ftp protocol
 
     Settings currently changed:
 
@@ -16,13 +16,22 @@
 local opt = require 'mp.options'
 local msg = require 'mp.msg'
 
+--add options using script-opts=ftpopts-option=value
 local o = {
     directory_playlist = 'playlist.pls',
     ordered_chapter_playlist = 'playlist.pls',
+
+    --if true the script will always check warning messages to see if one is about an ftp sub file
+    --if false the script will only keep track of warning messages when already playing an ftp file
+    --essesntially if this is false you can't drag an ftp sub file onto a non ftp video stream
+    always_check_subs = true
 }
 
-opt.read_options(o, 'ftp-opts', function() msg.debug('options updated') end)
+opt.read_options(o, 'ftpopts')
 
+local originalOpts = {
+    ordered_chapters = ""
+}
 local ftp = false
 local path
 
@@ -73,17 +82,24 @@ function setFTPOpts()
     end
 end
 
+--reverts options to before the ftp protocol was used
+function revertOpts()
+    msg.info('reverting settings to default')
+    mp.set_property('ordered-chapters-files', originalOpts.ordered_chapters)
+end
+
+--saves the original options to revert when no-longer playing an ftp file
+function saveOpts()
+    msg.verbose('saving original option values')
+    originalOpts.ordered_chapters = mp.get_property('ordered-chapters-files')
+end
+
 --stores the previous sub so that we can detect infinite file loops caused by a
 --completely invalid URL
 local prevSub
 
 --converts the URL of an errored subtitle and tries adding it again
 function addSubtitle(sub)
-    --removing the main error message
-    sub = sub:gsub("Can not open external file ", "")
-
-    --removing the space and period at the end of the message
-    sub = sub:sub(1, -3)
     sub = decodeURI(sub)
 
     --if this sub was the same as the prev, then cancel the function
@@ -101,12 +117,15 @@ end
 
 --only passes the warning if it matches the desired format
 function parseMessage(event)
-    if not ftp then return end
+    if (not ftp) and (not o.always_check_subs) then return end
 
     local error = event.text
-    if error:find("Can not open external file ") then
-        addSubtitle(error)
-    end
+    if not error:find("Can not open external file ") then return end
+
+    --isolating the file that was added
+    sub = error:sub(28, -3)
+    if sub:sub(1, 3) ~= "ftp" then return end
+    addSubtitle(sub)
 end
 
 --tests if the file being opened uses the ftp protocol
@@ -118,15 +137,23 @@ function testFTP()
         return
     end
 
-    ftp = false
     path = mp.get_property('path')
 
     msg.verbose('checking for ftp protocol')
     local protocol = path:sub(1, 3)
+
+    if (not ftp) and protocol == 'ftp' then
+        saveOpts()
+    end
+
     if protocol == "ftp" then
         ftp = true
         setFTPOpts()
+        return
+    elseif ftp then
+        revertOpts()
     end
+    ftp = false
 end
 
 --scans warning messages to tell if a subtitle track was incorrectly added
