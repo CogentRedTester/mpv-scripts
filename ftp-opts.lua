@@ -27,7 +27,7 @@ local o = {
     always_check_subs = true
 }
 
-opt.read_options(o, 'ftpopts')
+opt.read_options(o, 'ftp-opts')
 
 local originalOpts = {
     ordered_chapters = ""
@@ -50,19 +50,15 @@ do
     end
 end
 
---runs all of the custom operations for ftp files
-function setFTPOpts()
+--runs all of the custom parsing operations for ftp filenames
+function parseFTPStrings()
     msg.info('FTP protocol detected - modifying settings')
 
     --converts the path into a valid string
     path = path:gsub([[\]],[[/]])
     path = decodeURI(path)
 
-    local directory = path:sub(1, path:find("/[^/]*$"))
     local filename = path:sub(path:find("/[^/]*$") + 1)
-
-    --sets ordered chapters to use a playlist file inside the directory
-    mp.set_property('ordered-chapters-files', directory .. '/' .. o.ordered_chapter_playlist)
 
     --if there is no period in the filename then the file is actually a directory
     if not filename:find('%.') then
@@ -80,6 +76,14 @@ function setFTPOpts()
         mp.commandv('playlist-move', endPlaylist, pos+1)
         mp.commandv('playlist-remove', pos)
     end
+end
+
+--sets the custom ftp options
+function setFTPOpts()
+    local directory = path:sub(1, path:find("/[^/]*$"))
+
+    --sets ordered chapters to use a playlist file inside the directory
+    mp.set_property('ordered-chapters-files', directory .. '/' .. o.ordered_chapter_playlist)
 end
 
 --reverts options to before the ftp protocol was used
@@ -149,6 +153,7 @@ function testFTP()
     if protocol == "ftp" then
         ftp = true
         setFTPOpts()
+        parseFTPStrings()
         return
     elseif ftp then
         revertOpts()

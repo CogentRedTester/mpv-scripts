@@ -33,16 +33,18 @@ Switches to a music profile when an audio file is being played and switches back
 ## playlist-shuffle
 shuffles the playlist and moves the current file to the start of the playlist
 
+## syncplay
+Changes some settings to work well with [Syncplay](https://syncplay.pl/). Currently designed to provide support for local playlists.
+
 # Modified scripts:
 
 ## autoload
-Exactly the same as the script available here:
-https://github.com/mpv-player/mpv/blob/master/TOOLS/lua/autoload.lua
+Exactly the same as the script available [here](https://github.com/mpv-player/mpv/blob/master/TOOLS/lua/autoload.lua)
 
 However, instead of loading automatically it only loads when a keybind is pressed (Ctrl+f8 by default)
 
 # Other scripts
 
-betterchapters: https://github.com/mpv-player/mpv/issues/4738#issuecomment-321298846
+[betterchapters](https://github.com/mpv-player/mpv/issues/4738#issuecomment-321298846)
 
-nextfile: https://github.com/jonniek/mpv-nextfile 
+[nextfile](https://github.com/jonniek/mpv-nextfile)
