@@ -12,7 +12,8 @@ opt.read_options(o, 'syncplay')
 --sets some options when the player starts
 function set_opts()
     mp.set_property('keep-open', 'always')
-    mp.set_property_bool('keep-open-pause', true)
+    mp.set_property_bool('keep-open-pause', false)
+    mp.set_property_bool('loop-playlist', false)
 end
 
 --handles moving to next playlist entries
@@ -20,14 +21,18 @@ function reset_time(name, eof)
     msg.debug('eof = ' .. tostring(eof))
 
     if eof then
+        msg.verbose('moving to next playlist file')
+        
         local time = mp.get_time()
         while time + 2 > mp.get_time() do end
+        mp.set_property_bool('pause', true)
         mp.set_property_number('time-pos', 0)
+
         while time + 3 > mp.get_time() do end
         mp.command('playlist-next')
+
         while time+4 > mp.get_time() do end
         mp.set_property_bool('pause', false)
-        msg.verbose('moving to next playlist file')
     end
 end
 
