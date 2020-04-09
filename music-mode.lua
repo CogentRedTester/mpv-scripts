@@ -14,11 +14,14 @@
 	Names and argument options are at the bottom of this script file.
 ]]--
 
-msg = require 'mp.msg'
-opt = require 'mp.options'
+local msg = require 'mp.msg'
+local opt = require 'mp.options'
 
 --script options, set these in script-opts
 o = {
+    --change to disable automatic mode switching
+    auto = true,
+
     --profile to call when valid extension is found
     profile = "music",
 
@@ -26,12 +29,17 @@ o = {
     --you should essentially put all your defaults that the music profile changed in here
     undo_profile = "",
 
+    --start playback in music mode. This setting is only applied when the player is initially started,
+    --changing this option during runtime does nothing.
+    --probably only useful if auto is disabled
+    enable = false,
+
     --dispays the metadata of the track on the osd when music mode is on
     --there is also a script message to enable this seperately
     show_metadata = false
 }
 
-opt.read_options(o, 'musicmode')
+opt.read_options(o, 'musicmode', function() msg.verbose('options updated') end)
 
 --a music file has no video track, or the video track is less than 2 fps (an image file)
 function is_audio_file()
@@ -47,8 +55,6 @@ end
 
 --to prevent superfluous loading of profiles the script keeps track of when music mode is enabled
 local musicMode = false
-
-local locked = false
 
 --enables music mode
 function activate()
@@ -89,7 +95,7 @@ end
 
 --runs when the file is loaded, if script is locked it will do nothing
 function file_loaded()
-    if not locked then
+    if o.auto then
         main()
     end
 end
@@ -112,13 +118,13 @@ function script_message(command)
 end
 
 function lock()
-    locked = true
+    o.auto = false
     msg.info('Music Mode locked')
     mp.osd_message('Music Mode locked')
 end
 
 function unLock()
-    locked = false
+    o.auto = true
     msg.info('Music Mode unlocked')
     mp.osd_message('Music Mode unlocked')
 end
@@ -130,7 +136,7 @@ function lock_script_message(command)
     elseif command == "off" then
         unLock()
     elseif command == "toggle" then
-        if locked then
+        if o.auto then
             unLock()
         else
             lock()
@@ -180,6 +186,10 @@ function show_metadata(command)
     else
         msg.warn('unknown command "' .. command .. '"')
     end
+end
+
+if o.enable then
+    activate()
 end
 
 --sets music mode
