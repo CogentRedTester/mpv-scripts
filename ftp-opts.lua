@@ -66,16 +66,7 @@ function parseFTPStrings()
         path = path .. "/" .. o.directory_playlist
     end
 
-    --reloads the file, replacing the old one
-    --does not run if decodeURI did not change any characters in the address
-    if path ~= mp.get_property('path') then
-        msg.info('attempting to reload file with corrected path')
-        local pos = mp.get_property_number('playlist-pos')
-        local endPlaylist = mp.get_property_number('playlist-count', 0)
-        mp.commandv('loadfile', path, 'append')
-        mp.commandv('playlist-move', endPlaylist, pos+1)
-        mp.commandv('playlist-remove', pos)
-    end
+    mp.set_property('stream-open-filename', path)
 end
 
 --sets the custom ftp options
@@ -134,23 +125,12 @@ end
 
 --tests if the file being opened uses the ftp protocol
 function testFTP()
-    --reloading a file with corrected addresses causes this function to be rerun.
-    --this check prevents the function from being run twice for each file
-    if path == mp.get_property('path') then
-        msg.verbose('skipping ftp configuration because script reloaded same file')
-        return
-    end
-
-    path = mp.get_property('path')
-
     msg.verbose('checking for ftp protocol')
-    local protocol = path:sub(1, 3)
+    path = mp.get_property('stream-open-filename')
 
-    if (not ftp) and protocol == 'ftp' then
-        saveOpts()
-    end
+    if path:sub(1, 6) == "ftp://" then
+        if not ftp then saveOpts() end
 
-    if protocol == "ftp" then
         ftp = true
         setFTPOpts()
         parseFTPStrings()
@@ -165,4 +145,4 @@ end
 mp.enable_messages('warn')
 mp.register_event('log-message', parseMessage)
 
-mp.register_event('start-file', testFTP)
+mp.add_hook('on_load', 50, testFTP)
