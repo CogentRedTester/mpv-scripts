@@ -51,26 +51,30 @@ do
 end
 
 --runs all of the custom parsing operations for ftp filenames
-function parseFTPStrings()
-    msg.info('FTP protocol detected - modifying settings')
+function fixFtpPath()
+    if path:find('ftp://') ~= 1 then return end
+    msg.info('invalid ftp path, attempting to correct')
 
     --converts the path into a valid string
     path = path:gsub([[\]],[[/]])
     path = decodeURI(path)
 
-    local filename = path:sub(path:find("/[^/]*$") + 1)
-
     --if there is no period in the filename then the file is actually a directory
+    local filename = path:sub(path:find("/[^/]*$") + 1)
     if not filename:find('%.') then
-        msg.info('directory loaded - attempting to load playlist file')
+        msg.info('directory loaded, attempting to load playlist file')
         path = path .. "/" .. o.directory_playlist
     end
 
     mp.set_property('stream-open-filename', path)
+    
+    --has to run ftp opts again so that it uses the corrected file paths
+    setFTPOpts()
 end
 
 --sets the custom ftp options
 function setFTPOpts()
+    msg.verbose('setting custom options for ' .. path)
     local directory = path:sub(1, path:find("/[^/]*$"))
 
     --sets ordered chapters to use a playlist file inside the directory
@@ -94,23 +98,6 @@ end
 local prevSub
 
 --converts the URL of an errored subtitle and tries adding it again
-function addSubtitle(sub)
-    sub = decodeURI(sub)
-
-    --if this sub was the same as the prev, then cancel the function
-    --otherwise this would cause an infinite loop
-    --this is different behaviour from mpv default since you can't add the same file twice in a row
-    --but I don't know of any reason why one would do that, so I'm leaving it like this
-    if (sub == prevSub) then
-        msg.verbose('revised sub file was still not valid - cancelling event loop')
-        return
-    end
-    msg.info('attempting to add revised file address')
-    mp.commandv('sub-add', sub)
-    prevSub = sub
-end
-
---only passes the warning if it matches the desired format
 function parseMessage(event)
     if (not ftp) and (not o.always_check_subs) then return end
 
@@ -119,21 +106,35 @@ function parseMessage(event)
 
     --isolating the file that was added
     sub = error:sub(28, -3)
-    if sub:sub(1, 3) ~= "ftp" then return end
-    addSubtitle(sub)
+    if sub:find("ftp://") ~= 1 then return end
+
+    --modifying the URL
+    sub = decodeURI(sub)
+
+    --if this sub was the same as the prev, then cancel the function
+    --otherwise this would cause an infinite loop
+    --this is different behaviour from mpv default since you can't add the same file twice in a row
+    --but I don't know of any reason why one would do that, so I'm leaving it like this
+    if (sub == prevSub) then
+        msg.verbose('revised sub file was still not valid, cancelling event loop')
+        return
+    end
+    msg.info('attempting to add revised file address')
+    mp.commandv('sub-add', sub)
+    prevSub = sub
 end
 
---tests if the file being opened uses the ftp protocol
+--tests if the file being opened uses the ftp protocol to set custom settings
 function testFTP()
     msg.verbose('checking for ftp protocol')
     path = mp.get_property('stream-open-filename')
 
-    if path:sub(1, 6) == "ftp://" then
+    if path:find("ftp://") == 1 then
         if not ftp then saveOpts() end
 
+        msg.info('FTP protocol detected, modifying settings')
         ftp = true
         setFTPOpts()
-        parseFTPStrings()
         return
     elseif ftp then
         revertOpts()
@@ -146,3 +147,4 @@ mp.enable_messages('warn')
 mp.register_event('log-message', parseMessage)
 
 mp.add_hook('on_load', 50, testFTP)
+mp.add_hook('on_load_fail', 50, fixFtpPath)
