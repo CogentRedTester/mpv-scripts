@@ -52,7 +52,7 @@ end
 
 --runs all of the custom parsing operations for ftp filenames
 function fixFtpPath()
-    if path:find('ftp://') ~= 1 then return end
+    if not ftp then return end
     msg.info('invalid ftp path, attempting to correct')
 
     --converts the path into a valid string
