@@ -120,8 +120,6 @@ local var = {
     rates = {}
 }
 
-read_options(options, 'changerefresh', function(list) updateOptions(list) end)
-
 --is run whenever a change in script-opts is detected
 function updateOptions(changes)
     msg.verbose('updating options')
@@ -135,6 +133,7 @@ function updateOptions(changes)
         updateTable()
     end
 end
+read_options(options, 'changerefresh', updateOptions)
 
 --checks if the rates string contains any invalid characters
 function checkRatesString()
