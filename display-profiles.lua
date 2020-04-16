@@ -44,3 +44,4 @@ function apply_profile(property, names)
 end
 
 mp.observe_property('display-names', 'native', apply_profile)
+update_opts()
