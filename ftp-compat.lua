@@ -128,6 +128,7 @@ end
 function testFTP()
     msg.verbose('checking for ftp protocol')
     path = mp.get_property('stream-open-filename')
+    prevSub = ""
 
     if path:find("ftp://") == 1 then
         if not ftp then saveOpts() end
