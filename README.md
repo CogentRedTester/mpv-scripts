@@ -21,6 +21,9 @@ Cycles through a series of commands on a keypress. Each iteration of the cycle c
 ## cycle-profile
 Cycles through a list of profiles sent via a script message and prints the profile-desc to the OSD. More details at the top of the file
 
+## display-profiles
+Automatically applies profiles when the mpv window is moved to a new display
+
 ## editions-notification
 Prints a message on the OSD if editions are found in the file, and temporarily switches the osd-playing-message to the editions-list property when switching. This makes it easier to tell the number and names while navigating editions.
 
