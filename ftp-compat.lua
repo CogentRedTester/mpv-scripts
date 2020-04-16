@@ -27,7 +27,7 @@ local o = {
     always_check_subs = true
 }
 
-opt.read_options(o, 'ftp-opts')
+opt.read_options(o, 'ftp_compat')
 
 local originalOpts = {
     ordered_chapters = ""
@@ -144,7 +144,7 @@ function testFTP()
 end
 
 --scans warning messages to tell if a subtitle track was incorrectly added
-mp.enable_messages('warn')
+mp.enable_messages('error')
 mp.register_event('log-message', parseMessage)
 
 mp.add_hook('on_load', 50, testFTP)
