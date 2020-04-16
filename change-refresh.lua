@@ -88,18 +88,13 @@ local options = {
     --the actual original rate will be ignored
     original_rate = 0,
 
-    --enable to have the script attempt to apply custom profiles for different displays
-    --this is not very intelligent, it just applies a profile with the name [changerefresh/#]
-    --where # is the display number as printed to the console/osd when change-refresh runs
-    custom_profiles = false,
-
     --if enabled, this mode sets the monitor to the specified dimensions when the resolution of the video is greater than or equal to the threshold
     --if less than the threshold the monitor will be set to the default shown above, or to the current resolution
     --this feature is only really useful if you don't want to be upscaling video to UHD, but still want to play UHD files in native resolution
     UHD_adaptive = false,
     UHD_threshold = 1440,
-    UHD_width = "3840",
-    UHD_height = "2160",
+    UHD_width = 3840,
+    UHD_height = 2160,
 
     --set whether to output status messages to the osd
     osd_output = true
@@ -128,18 +123,16 @@ local var = {
 read_options(options, 'changerefresh', function(list) updateOptions(list) end)
 
 --is run whenever a change in script-opts is detected
-local prevRates = ""
 function updateOptions(changes)
     msg.verbose('updating options')
     msg.debug(utils.to_string(changes))
 
     --only runs the heavy commands if the rates string has been changed
-    if options.rates ~= prevRates then
+    if changes == nil or changes.rates then
         msg.verbose('rates whitelist has changed')
 
         checkRatesString()
         updateTable()
-        prevRates = options.rates
     end
 end
 
@@ -151,7 +144,7 @@ function checkRatesString()
     str = str:gsub("%-", '')
 
     if str:match("%D") then
-        msg.warn ('rates whitelist contains invalid characters, can only contain numbers, semicolons and hyphens')
+        msg.error('Rates whitelist contains invalid characters, can only contain numbers, semicolons and hyphens. Be prepared for the script to crash')
     end
 end
 
@@ -199,6 +192,10 @@ function updateTable()
         table.insert(var.rateList, rate)
 
         ::loopend::
+    end
+
+    if #var.rateList < 1 then
+        msg.warn('rate list empty, will not be able to change refresh rate')
     end
 end
 
@@ -381,6 +378,10 @@ function findValidRate(rate)
             break
         end
     end
+
+    if closestRate == nil then
+        closestRate = 0
+    end
     msg.verbose('closest rate is ' .. closestRate .. ', saving...')
 
     --saves the rate to reduce repeated searches
@@ -399,13 +400,6 @@ function matchVideo()
     if ((var.beenReverted == false) and (var.dname ~= dname)) then
         msg.verbose('changing new display, reverting old one first')
         revertRefresh()
-    end
-
-    --applies the profile for the specific display if that option is enabled
-    if options.custom_profiles then
-        mp.commandv('apply-profile', 'changerefresh/' .. dnumber)
-        read_options(options, 'changerefresh')
-        updateOptions()
     end
 
     --records video properties
@@ -505,6 +499,11 @@ function scriptMessage(width, height, rate, display)
     local name
     if display == nil then
         name, display = getDisplayDetails()
+    end
+
+    if width == nil or height == nil or rate == nil then
+        msg.warn('script message must include a width, height, and rate')
+        return
     end
 
     msg.verbose('recieved script message: ' .. width .. ' ' .. height .. ' ' .. rate .. ' ' .. display)
