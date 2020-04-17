@@ -29,9 +29,6 @@ local o = {
 
 opt.read_options(o, 'ftp_compat')
 
-local originalOpts = {
-    ordered_chapters = ""
-}
 local ftp = false
 local path
 
@@ -73,24 +70,15 @@ function fixFtpPath()
 end
 
 --sets the custom ftp options
+--only applies to the specific file loaded
+--since this function needs to be rerun for every ftp file anyway,
+--this doesn't decrease performance
 function setFTPOpts()
     msg.verbose('setting custom options for ' .. path)
     local directory = path:sub(1, path:find("/[^/]*$"))
 
     --sets ordered chapters to use a playlist file inside the directory
-    mp.set_property('ordered-chapters-files', directory .. '/' .. o.ordered_chapter_playlist)
-end
-
---reverts options to before the ftp protocol was used
-function revertOpts()
-    msg.info('reverting settings to default')
-    mp.set_property('ordered-chapters-files', originalOpts.ordered_chapters)
-end
-
---saves the original options to revert when no-longer playing an ftp file
-function saveOpts()
-    msg.verbose('saving original option values')
-    originalOpts.ordered_chapters = mp.get_property('ordered-chapters-files')
+    mp.set_property('file-local-options/ordered-chapters-files', directory .. '/' .. o.ordered_chapter_playlist)
 end
 
 --stores the previous sub so that we can detect infinite file loops caused by a
@@ -131,14 +119,10 @@ function testFTP()
     prevSub = ""
 
     if path:find("ftp://") == 1 then
-        if not ftp then saveOpts() end
-
         msg.info('FTP protocol detected, modifying settings')
         ftp = true
         setFTPOpts()
         return
-    elseif ftp then
-        revertOpts()
     end
     ftp = false
 end
@@ -147,5 +131,6 @@ end
 mp.enable_messages('error')
 mp.register_event('log-message', parseMessage)
 
+--testFTP doesn't strictly need to be a hook, but I don't want it to run asynchronously with fixFtpPath
 mp.add_hook('on_load', 50, testFTP)
 mp.add_hook('on_load_fail', 50, fixFtpPath)
