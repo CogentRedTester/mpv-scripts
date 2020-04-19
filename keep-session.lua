@@ -1,5 +1,18 @@
+--[[
+    This script automatically saves the current playlist and reloads it if the player is started in idle mode.
+    It remembers the playlist position the player was in when shutdown and reloads the playlist at that entry.
+    This can be disabled with script-opts
+
+    The script saves a text file containing the previous session playlist in the watch_later directory (changeable via opts)
+    This file is saved in plaintext with the exact file paths of each playlist entry.
+
+    The script attempts to correct relative playlist paths using the utils.join_path function. If any URL does not work
+    it is probably something to do with this
+]]--
+
 local utils = require 'mp.utils'
 local opt = require 'mp.options'
+local msg = require 'mp.msg'
 
 local o = {
     --enable the script
@@ -23,6 +36,7 @@ local session
 local prev_session
 function setup_file_associations()
     if session then return end
+    msg.verbose('loading previous session file')
 
     --loads the previous session file
     local save_file = mp.command_native({"expand-path", o.save_directory}) .. '/prev-session.txt'
@@ -30,6 +44,7 @@ function setup_file_associations()
 
     --if the file does not exists create a new one
     if session == nil then
+        msg.verbose('no session file found, creating new file')
         session = io.open(save_file, "w+")
     end
     prev_session = session:read()
