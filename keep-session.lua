@@ -81,6 +81,8 @@ function save_playlist()
     local json, error = utils.format_json(playlist)
     --reopens the file and wipes the old contents
     session:close()
+    if json == "[]" then return end
+
     session = io.open(save_file, 'w')
     session:write(json)
     session:close()
@@ -158,7 +160,7 @@ mp.register_event('shutdown', shutdown)
 
 --I'm not sure if it's possible for the player to be in idle on startup with items in the playlist
 --but I'm doing this to be safe
-if mp.get_property_bool('idle-active', 'yes') and (mp.get_property_number('playlist-count', 0) == 0) then
+if (mp.get_property_number('playlist-count', 0) == 0) then
     if not o.auto_load then return end
     load_prev_session()
 end

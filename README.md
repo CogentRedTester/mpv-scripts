@@ -31,7 +31,7 @@ Prints a message on the OSD if editions are found in the file, and temporarily s
 Changes some options when using the ftp protocol for better user experience
 
 ## keep-session
-Automatically saves the current playlist on exit and reloads it when the player is booted in idle mode
+Automatically saves the current playlist on exit and allows the user to reload it next time they boot mpv
 
 ## music-mode
 Switches to a music profile when an audio file is being played and switches back when a non-audio file is played
