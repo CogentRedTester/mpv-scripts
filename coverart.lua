@@ -92,8 +92,6 @@ function checkForCoverart()
     --only confirmed to work in windows, this is the part that may need to be changed for other operating systems
     local exact_path = utils.join_path(workingDirectory, filepath)
     msg.verbose('full path: ' .. exact_path)
-    exact_path = exact_path:gsub([[/.\]], [[/]])
-    exact_path = exact_path:gsub([[\]], [[/]])
     msg.verbose('standardising characters, new path: ' .. exact_path)
 
     --splits the directory and filename apart
