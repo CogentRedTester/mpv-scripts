@@ -1,5 +1,6 @@
 --[[
-    This script automatically saves the current playlist and reloads it if the player is started in idle mode.
+    This script automatically saves the current playlist and can reloads it if the player is started in idle mode,
+    or if the correct command is sent via script-messages.
     It remembers the playlist position the player was in when shutdown and reloads the playlist at that entry.
     This can be disabled with script-opts
 
@@ -7,8 +8,8 @@
     This file is saved in plaintext with the exact file paths of each playlist entry.
     Note that since it uses the same file, only the latest mpv window to be closed will be saved
 
-    The script attempts to correct relative playlist paths using the utils.join_path function. If any URL does not work
-    it is probably something to do with this
+    The script attempts to correct relative playlist paths using the utils.join_path function. I've tried to automatically
+    detect when any non-files are loaded (if it has the sequence :// in the path), so that it'll work with URLs
 
     You can disable the automatic stuff and use script messages to load/save playlists as well
 
@@ -25,7 +26,7 @@ local o = {
     auto_save = true,
 
     --runs the script automatically when started in idle mode and no files are in the playlist
-    auto_load = true,
+    auto_load = false,
 
     --directory to keep a record of the previous session
     save_directory = mp.get_property_osd('watch-later-directory', ''),
