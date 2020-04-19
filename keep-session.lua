@@ -109,7 +109,6 @@ function load_prev_session()
             previous_playlist_pos = i
         end
     end
-    print(mp.get_property('idle'))
     mp.set_property('idle', 'no')
 end
 
@@ -129,7 +128,6 @@ function reload_session()
     setup_file_associations()
     mp.command('playlist-clear')
     load_prev_session()
-    print(mp.get_property_number('playlist-pos'))
     if mp.get_property_bool('idle-active') then mp.command('playlist-remove current') end
     mp.register_event('file-loaded', on_load)
 end
