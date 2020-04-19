@@ -125,10 +125,18 @@ function on_load()
 end
 
 function reload_session()
+    local is_idle = mp.get_property('idle-active')
+    if is_idle == "no" then is_idle = false
+    else is_idle = true end
+
     setup_file_associations()
+
+    --clears everything but the current file
     mp.command('playlist-clear')
     load_prev_session()
-    if mp.get_property_bool('idle-active') then mp.command('playlist-remove current') end
+
+    --if idle was not active then we need to remove the currently playing file
+    if not is_idle then mp.command('playlist-remove current') end
     mp.register_event('file-loaded', on_load)
 end
 
