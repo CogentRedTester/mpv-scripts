@@ -137,9 +137,9 @@ function lock_script_message(command)
         unLock()
     elseif command == "toggle" then
         if o.auto then
-            unLock()
-        else
             lock()
+        else
+            unLock()
         end
     else
         msg.warn('unknown command "' .. command .. '"')
