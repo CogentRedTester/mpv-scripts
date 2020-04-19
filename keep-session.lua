@@ -56,7 +56,7 @@ function setup_file_associations()
         session = io.open(save_file, "w+")
     end
     prev_session = session:read()
-    msg.debug("json of prev session: " .. prev_session)
+    msg.debug(prev_session)
 
     --reopens the file and wipes the old contents
     session:close()
