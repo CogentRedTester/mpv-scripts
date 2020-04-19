@@ -89,7 +89,7 @@ end
 --sets the position of the playlist to the last session's last open file if the option is set
 local previous_playlist_pos = 1
 function set_position()
-    if o.maintain_pos and previous_playlist_pos ~= 1 then
+    if o.maintain_pos and previous_playlist_pos ~= mp.get_property_number('playlist-pos-1') then
         mp.set_property_number('playlist-pos-1', previous_playlist_pos)
     end
 end
