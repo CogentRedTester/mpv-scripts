@@ -98,7 +98,6 @@ function load_prev_session()
             previous_playlist_pos = i
         end
     end
-    print(utils.to_string(mp.get_property_native('playlist')))
     mp.set_property('idle', 'no')
 end
 
