@@ -95,6 +95,10 @@ end
 
 --turns the previous json string into a table and adds all the files to the playlist
 function load_prev_session()
+    if prev_session == nil or prev_session == "[]" then
+        return
+    end
+
     local t, err = utils.parse_json(prev_session)
 
     for i, file in ipairs(t) do
@@ -104,6 +108,7 @@ function load_prev_session()
             previous_playlist_pos = i
         end
     end
+    print(mp.get_property('idle'))
     mp.set_property('idle', 'no')
 end
 
@@ -123,7 +128,8 @@ function reload_session()
     setup_file_associations()
     mp.command('playlist-clear')
     load_prev_session()
-    mp.command('playlist-remove current')
+    print(mp.get_property_number('playlist-pos'))
+    if mp.get_property_bool('idle-active') then mp.command('playlist-remove current') end
     mp.register_event('file-loaded', on_load)
 end
 
@@ -142,10 +148,6 @@ mp.register_script_message('reload-session', reload_session)
 mp.register_event('file-loaded', on_load)
 mp.register_event('shutdown', shutdown)
 
---quits the rest of the script if there is no data from the previous session
-if prev_session == nil or prev_session == "[]" then
-    return
-end
 
 --I'm not sure if it's possible for the player to be in idle on startup with items in the playlist
 --but I'm doing this to be safe
