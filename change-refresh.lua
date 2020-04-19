@@ -302,22 +302,16 @@ end
 --so to get around this the name must be converted into an integer
 --the names are in the form \\.\DISPLAY# starting from 1, while the integers start from 0
 function getDisplayDetails()
-    local name = mp.get_property('display-names')
-    msg.verbose('display list: ' .. name)
+    local name = mp.get_property_native('display-names')
 
-    --if a comma is in the list the mpv window is on mutiple displays
-    name1 = name:find(',')
-    if (name1 == nil) then
-        name = name
-    else
-        msg.verbose('found comma in display list at pos ' .. tostring(name1) .. ', will use the first display')
-
-        --the display-fps property always refers to the display with the lowest refresh rate
-        --there is no way to test which display this is, so reverting the refresh when mpv is on multiple monitors is unpredictable
-        --however, by default I'm just selecting whatever the first monitor in the list is
-        name = string.sub(name, 0, name1 - 1)
+    --the display-fps property always refers to the display with the lowest refresh rate
+    --there is no way to test which display this is, so reverting the refresh when mpv is on multiple monitors is unpredictable
+    --however, by default I'm just selecting whatever the first monitor in the list is
+    if #name > 1 then
+        msg.warn('mpv window is on multiplem displays, script may revert to wrong display rate')
     end
 
+    name = name[0]
     msg.verbose('display name = ' .. name)
 
     --the last character in the name will always be the display number
