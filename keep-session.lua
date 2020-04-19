@@ -5,6 +5,7 @@
 
     The script saves a text file containing the previous session playlist in the watch_later directory (changeable via opts)
     This file is saved in plaintext with the exact file paths of each playlist entry.
+    Note that since it uses the same file, only the latest mpv window to be closed will be saved
 
     The script attempts to correct relative playlist paths using the utils.join_path function. If any URL does not work
     it is probably something to do with this
@@ -42,12 +43,12 @@ opt.read_options(o, 'keep_session', function() end)
 
 local session
 local prev_session
+local save_file = mp.command_native({"expand-path", o.save_directory}) .. '/prev-session.txt'
 function setup_file_associations()
     if session then return end
     msg.verbose('loading previous session file')
 
     --loads the previous session file
-    local save_file = mp.command_native({"expand-path", o.save_directory}) .. '/prev-session.txt'
     session = io.open(save_file, "r+")
 
     --if the file does not exists create a new one
@@ -57,10 +58,6 @@ function setup_file_associations()
     end
     prev_session = session:read()
     msg.debug(prev_session)
-
-    --reopens the file and wipes the old contents
-    session:close()
-    session = io.open(save_file, 'w')
 end
 
 
@@ -75,6 +72,9 @@ function save_playlist()
         v.filename = utils.join_path(working_directory, v.filename)
     end
     local json, error = utils.format_json(playlist)
+    --reopens the file and wipes the old contents
+    session:close()
+    session = io.open(save_file, 'w')
     session:write(json)
     session:close()
 end
