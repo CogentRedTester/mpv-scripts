@@ -1,6 +1,6 @@
 --[[
-    This script automatically saves the current playlist and can reloads it if the player is started in idle mode,
-    or if the correct command is sent via script-messages.
+    This script automatically saves the current playlist and can reload it if the player is started in idle mode (specifically
+    if there are 0 files in the playlist), or if the correct command is sent via script-messages.
     It remembers the playlist position the player was in when shutdown and reloads the playlist at that entry.
     This can be disabled with script-opts
 
