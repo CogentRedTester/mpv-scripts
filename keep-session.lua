@@ -69,7 +69,13 @@ function save_playlist()
     local working_directory = mp.get_property('working-directory')
 
     for i, v in ipairs(playlist) do
-        v.filename = utils.join_path(working_directory, v.filename)
+        msg.debug('adding ' .. v.filename .. ' to playlist')
+        --if the file is available then it attempts to expand the path in-case of relative playlists
+        --presumably if the file contains a :// then it's a network stream, so we shouldn't try to expand the path
+        if not (v.filename:find("://")) or (v.filename:find("file://") == 1) then
+            v.filename = utils.join_path(working_directory, v.filename)
+            msg.debug('expanded path: ' .. v.filename)
+        end
     end
     local json, error = utils.format_json(playlist)
     --reopens the file and wipes the old contents
