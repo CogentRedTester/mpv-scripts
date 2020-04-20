@@ -36,6 +36,9 @@ Automatically saves the current playlist on exit and allows the user to reload i
 ## music-mode
 Switches to a music profile when an audio file is being played and switches back when a non-audio file is played
 
+## onedrive-hook
+Automatically converts a onedrive share link into a direct path which mpv can play, Windows only.
+
 ## playlist-shuffle
 shuffles the playlist and moves the current file to the start of the playlist
 
