@@ -311,7 +311,7 @@ function getDisplayDetails()
         msg.warn('mpv window is on multiplem displays, script may revert to wrong display rate')
     end
 
-    name = name[0]
+    name = name[1]
     msg.verbose('display name = ' .. name)
 
     --the last character in the name will always be the display number
