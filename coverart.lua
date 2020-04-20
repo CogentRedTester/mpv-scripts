@@ -40,7 +40,7 @@ local o = {
 
     --scans the parent directory for coverart as well
     --this currently doesn't work with playlist loading
-    check_parent = true,
+    check_parent = false,
 
     --attempts to load from playlist automatically if it can't access the filesystem
     auto_load_from_playlist = true
@@ -92,14 +92,23 @@ function loadPlaceholder()
     mp.commandv('video-add', placeholder)
 end
 
-function testFileExt(fileext)
+--checks if the given file matches the cover art requirements
+function isValidCoverart(file)
+    msg.verbose('testing if ' .. file .. ' is valid coverart')
+    local filename, fileext = splitFileName(file)
+
     if o.imageExts ~= "" and not imageExts[fileext] then
         msg.debug('"' .. fileext .. '" not in whitelist')
         return false
     else
         msg.debug('"' .. fileext .. '" in whitelist, checking for valid name...')
+    end
+    if o.names == "" or names[filename] then
+        msg.debug('filename valid')
         return true
     end
+    msg.debug('filename invalid')
+    return false
 end
 
 --splits filename into a name and extension
@@ -139,17 +148,8 @@ function addFromDirectory(directory)
 
     --loops through the all the files in the directory to find if any are valid cover art
     for i, file in ipairs(files) do
-        msg.debug('found file: ' .. files[i])
-        
-        local filename, fileext = splitFileName(file)
-
-        --if file extension is not an image then moves to the next file
-        if not testFileExt(fileext) then
-            goto continue
-        end
-
         --if the name matches one in the whitelist then load it
-        if o.names == "" or names[filename] then
+        if isValidCoverart(file) then
             msg.verbose(file .. ' found in whitelist - adding as extra video track...')
             loadCover(utils.join_path(directory, file))
         end
@@ -200,14 +200,7 @@ function checkForCoverart()
         for i,v in ipairs(pls)do
             local dir, name = utils.split_path(v.filename)
             if (not o.enforce_playlist_directory) or utils.join_path(workingDirectory, dir) == directory then
-                msg.debug('found file: ' .. v.filename)
-                local name, ext = splitFileName(name)
-
-                if not testFileExt(ext) then
-                    goto continue
-                end
-
-                if o.names == "" or names[name] then
+                if isValidCoverart(name) then
                     msg.verbose('found cover in playlist')
                     loadCover(v.filename)
                 end
