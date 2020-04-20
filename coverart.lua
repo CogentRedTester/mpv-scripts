@@ -39,6 +39,9 @@ local o = {
     --scans the parent directory for coverart as well
     --this currently doesn't work with playlist loading
     check_parent = true,
+
+    --attempts to load from playlist automatically if it can't access the filesystem
+    auto_load_from_playlist = true
 }
 
 local names = {}
@@ -127,7 +130,7 @@ function addFromDirectory(directory)
     local files = utils.readdir(directory, "files")
     if files == nil then
         msg.verbose('no files could be loaded from ' .. directory)
-        files = {}
+        return false
     else
         msg.verbose('scanning files in ' .. directory)
     end
@@ -151,6 +154,7 @@ function addFromDirectory(directory)
 
         ::continue::
     end
+    return true
 end
 
 function checkForCoverart()
@@ -178,14 +182,16 @@ function checkForCoverart()
     msg.verbose('directory: ' .. directory)
 
     local files
+    local succeeded
     if not o.load_from_playlist then
         --loads the files from the directory
-        addFromDirectory(directory)
+        succeeded = addFromDirectory(directory)
 
-        if o.check_parent then
+        if o.check_parent and succeeded then
             addFromDirectory(directory .. "/../")
         end
-    else
+    end
+    if ((not succeeded) and o.auto_load_from_playlist) or o.load_from_playlist then
         --loads files from playlist
         msg.info('searching for coverart in current playlist')
         local pls = mp.get_property_native('playlist')
