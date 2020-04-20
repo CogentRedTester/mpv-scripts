@@ -183,7 +183,6 @@ function checkForCoverart()
     local directory = utils.split_path(exact_path)
     msg.verbose('directory: ' .. directory)
 
-    local files
     local succeeded
     if o.load_from_filesystem then
         --loads the files from the directory
