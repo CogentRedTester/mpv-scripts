@@ -160,18 +160,18 @@ function addFromDirectory(directory)
 end
 
 function checkForCoverart()
-    --finds the local directory of the file
-    local workingDirectory = mp.get_property('working-directory')
-    msg.verbose('working-directory: ' .. workingDirectory)
-    local filepath = mp.get_property('path')
-    msg.verbose('filepath: ' .. filepath)
-
     --does not look for cover art if the file is not ana audio file
     if not o.always_scan_coverart and not is_audio_file() then
         msg.verbose('file is not an audio file, aborting coverart search')
         loadPlaceholder()
         return
     end
+
+    --finds the local directory of the file
+    local workingDirectory = mp.get_property('working-directory')
+    msg.verbose('working-directory: ' .. workingDirectory)
+    local filepath = mp.get_property('path')
+    msg.verbose('filepath: ' .. filepath)
 
     --converts the string into a compatible path for mpv to parse
     --only confirmed to work in windows, this is the part that may need to be changed for other operating systems
