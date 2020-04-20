@@ -27,8 +27,10 @@ local o = {
     --leaving it blank will be the same as disabling it
     placeholder = "",
 
+    --searches for valid coverart in the filesystem
+    load_from_filesystem = true,
+
     --search for valid coverart in the current playlist
-    --leaving this blank is the same as disabling it
     load_from_playlist = false,
 
     --playlist entries must be from a directory that would otherwise be scanned
@@ -183,7 +185,7 @@ function checkForCoverart()
 
     local files
     local succeeded
-    if not o.load_from_playlist then
+    if o.load_from_filesystem then
         --loads the files from the directory
         succeeded = addFromDirectory(directory)
 
