@@ -26,6 +26,19 @@ local o = {
     --will only be used if force-window is enabled
     --leaving it blank will be the same as disabling it
     placeholder = "",
+
+    --search for valid coverart in the current playlist
+    --leaving this blank is the same as disabling it
+    load_from_playlist = false,
+
+    --playlist entries must be from a directory that would otherwise be scanned
+    --these two options may seem pointless, but they're useful for streaming from
+    --network file servers which mpv can't usually scan
+    enforce_playlist_directory = true,
+
+    --scans the parent directory for coverart as well
+    --this currently doesn't work with playlist loading
+    check_parent = true,
 }
 
 local names = {}
@@ -74,6 +87,72 @@ function loadPlaceholder()
     mp.commandv('video-add', placeholder)
 end
 
+function testFileExt(fileext)
+    if o.imageExts ~= "" and not imageExts[fileext] then
+        msg.debug('"' .. fileext .. '" not in whitelist')
+        return false
+    else
+        msg.debug('"' .. fileext .. '" in whitelist, checking for valid name...')
+        return true
+    end
+end
+
+--splits filename into a name and extension
+function splitFileName(file)
+    file = string.lower(file)
+
+    --finds the file extension
+    local index = file:find([[.[^.]*$]])
+    local fileext = file:sub(index + 1)
+
+    --find filename
+    local filename = file:sub(0, index - 1)
+
+    return filename, fileext
+end
+
+--loads the coverart
+function loadCover(path)
+    --adds the new file to the playing list
+    --if there is no video track currently selected then it autoloads track #1
+    if mp.get_property_number('vid', 0) == 0 then
+        mp.commandv('video-add', path)
+    else
+        mp.commandv('video-add', path, "auto")
+    end
+end
+
+--searches and adds valid coverart from the specified directory
+function addFromDirectory(directory)
+    local files = utils.readdir(directory, "files")
+    if files == nil then
+        msg.verbose('no files could be loaded from ' .. directory)
+        files = {}
+    else
+        msg.verbose('scanning files in ' .. directory)
+    end
+
+    --loops through the all the files in the directory to find if any are valid cover art
+    for i, file in ipairs(files) do
+        msg.debug('found file: ' .. files[i])
+        
+        local filename, fileext = splitFileName(file)
+
+        --if file extension is not an image then moves to the next file
+        if not testFileExt(fileext) then
+            goto continue
+        end
+
+        --if the name matches one in the whitelist then load it
+        if o.names == "" or names[filename] then
+            msg.verbose(file .. ' found in whitelist - adding as extra video track...')
+            loadCover(utils.join_path(directory, file))
+        end
+
+        ::continue::
+    end
+end
+
 function checkForCoverart()
     --finds the local directory of the file
     local workingDirectory = mp.get_property('working-directory')
@@ -98,50 +177,36 @@ function checkForCoverart()
     local directory = utils.split_path(exact_path)
     msg.verbose('directory: ' .. directory)
 
-    --loads the files from the directory
-    files = utils.readdir(directory, "files")
-    if files == nil then
-        msg.verbose('no files could be loaded from directory')
-        files = {}
+    local files
+    if not o.load_from_playlist then
+        --loads the files from the directory
+        addFromDirectory(directory)
+
+        if o.check_parent then
+            addFromDirectory(directory .. "/../")
+        end
     else
-        msg.verbose('scanning files in ' .. directory)
-    end
+        --loads files from playlist
+        msg.info('searching for coverart in current playlist')
+        local pls = mp.get_property_native('playlist')
+        
+        for i,v in ipairs(pls)do
+            local dir, name = utils.split_path(v.filename)
+            if (not o.enforce_playlist_directory) or utils.join_path(workingDirectory, dir) == directory then
+                msg.debug('found file: ' .. v.filename)
+                local name, ext = splitFileName(name)
 
-    --loops through the all the files in the directory to find if any are valid cover art
-    for i = 1, #files, 1 do
-        msg.debug('found file: ' .. files[i])
-        local file = string.lower(files[i])
+                if not testFileExt(ext) then
+                    goto continue
+                end
 
-        --finds the file extension
-        local index = string.find(file, [[.[^.]*$]])
-        local fileext = file:sub(index + 1)
-
-        --if file extension is not an image then moves to the next file
-        if o.imageExts ~= "" and not imageExts[fileext] then
-            msg.debug('"' .. fileext .. '" not in whitelist')
-            goto continue
-        else
-            msg.debug('"' .. fileext .. '" in whitelist, checking for valid name...')
-        end
-
-        --sets the file name
-        local filename = file:sub(0, index - 1)
-
-        --if the name matches one in the whitelist then load it
-        if o.names == "" or names[filename] then
-            msg.verbose(file .. ' found in whitelist - adding as extra video track...')
-            local coverart = utils.join_path(directory, files[i])
-
-            --adds the new file to the playing list
-            --if there is no video track currently selected then it autoloads track #1
-            if mp.get_property_number('vid', 0) == 0 then
-                mp.commandv('video-add', coverart)
-            else
-                mp.commandv('video-add', coverart, "auto")
+                if o.names == "" or names[name] then
+                    msg.verbose('found cover in playlist')
+                    loadCover(v.filename)
+                end
             end
+            ::continue::
         end
-
-        ::continue::
     end
 
     --loads a placeholder image if no covers were found and a window is forced
