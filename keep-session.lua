@@ -26,7 +26,7 @@ local o = {
     auto_save = true,
 
     --runs the script automatically when started in idle mode and no files are in the playlist
-    auto_load = false,
+    auto_load = true,
 
     --directory to keep a record of the previous session
     save_directory = mp.get_property_osd('watch-later-directory', ''),
