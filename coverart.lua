@@ -1,10 +1,15 @@
---this script automatically scans the directory of the currently open file for valid external cover art and automatically loads it into mpv player
---I can only confirm that this works on windows, I have not tested it on any other platform, however it should be simple to adapt by modifying the checkForCoverart function
+--[[
+    This script automatically loads external coverart files into mpv as additional video tracks.
 
-utils = require 'mp.utils'
-msg = require 'mp.msg'
-opt = require 'mp.options'
+    By default the script searches the folder than the current file is from, but it can also search in
+    the parent folder and the current playlist. By default the script will automatically search the playlist
+    if it can't access the directory of the current file (usually when playing a network file).
 
+    Look at the below for the full list of options, see the mpv manual for how to set options (the osc chapter has good examples)
+    the option prefix is 'coverart-'
+]]--
+
+--list of options
 local o = {
     --list of names of valid cover art, must be separated by semicolons with no spaces
     --the script is not case specific
@@ -31,20 +36,27 @@ local o = {
     load_from_filesystem = true,
 
     --search for valid coverart in the current playlist
+    --this may seem pointless, but it's useful for streaming from
+    --network file servers which mpv can't usually scan
     load_from_playlist = false,
 
-    --playlist entries must be from a directory that would otherwise be scanned
-    --these two options may seem pointless, but they're useful for streaming from
-    --network file servers which mpv can't usually scan
+    --If this is enabled then only valid coverart in the playlist that is
+    --also in the same directory as the currently playing file will be loaded.
+    --If disabled, then any valid coverart in the playlist will be loaded.
     enforce_playlist_directory = true,
 
-    --scans the parent directory for coverart as well
-    --this currently doesn't work with playlist loading
+    --scans the parent directory for coverart as well, this
+    --currently doesn't do anything when loading from a playlist
     check_parent = false,
 
     --attempts to load from playlist automatically if it can't access the filesystem
     auto_load_from_playlist = true
 }
+
+local mp = require 'mp'
+local utils = require 'mp.utils'
+local msg = require 'mp.msg'
+local opt = require 'mp.options'
 
 local names = {}
 local imageExts = {}
@@ -172,9 +184,6 @@ function checkForCoverart()
     msg.verbose('working-directory: ' .. workingDirectory)
     local filepath = mp.get_property('path')
     msg.verbose('filepath: ' .. filepath)
-
-    --converts the string into a compatible path for mpv to parse
-    --only confirmed to work in windows, this is the part that may need to be changed for other operating systems
     local exact_path = utils.join_path(workingDirectory, filepath)
     msg.verbose('full path: ' .. exact_path)
 
