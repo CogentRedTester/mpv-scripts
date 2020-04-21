@@ -65,6 +65,7 @@ end
 --saves the current playlist as a json string
 function save_playlist()
     msg.verbose('saving current session')
+    setup_file_associations()
 
     local playlist = mp.get_property_native('playlist')
     local working_directory = mp.get_property('working-directory')
@@ -81,29 +82,25 @@ function save_playlist()
     local json, error = utils.format_json(playlist)
     --reopens the file and wipes the old contents
     session:close()
-    if json == "[]" then return end
+    if json == "[]" then
+        msg.verbose('session empty, aborting save')
+        return
+    end
 
     session = io.open(save_file, 'w')
     session:write(json)
     session:close()
 end
 
---sets the position of the playlist to the last session's last open file if the option is set
-local previous_playlist_pos = 1
-function set_position()
-    if o.maintain_pos and previous_playlist_pos ~= mp.get_property_number('playlist-pos-1') then
-        mp.set_property_number('playlist-pos-1', previous_playlist_pos)
-    end
-end
-
 --turns the previous json string into a table and adds all the files to the playlist
-function load_prev_session()
+function load_prev_session(idle)
+    setup_file_associations()
     if prev_session == nil or prev_session == "[]" then
         return
     end
 
     local t, err = utils.parse_json(prev_session)
-
+    local previous_playlist_pos = 1
     for i, file in ipairs(t) do
         msg.debug('adding file: ' .. file.filename)
         mp.commandv('loadfile', file.filename, "append-play")
@@ -111,35 +108,45 @@ function load_prev_session()
             previous_playlist_pos = i
         end
     end
-    mp.set_property('idle', 'no')
+
+    --for some reason I can't set the playlist position manually before playback starts,
+    --so we need to set this option
+    if o.maintain_pos and idle then
+        local pl_start = mp.get_property('playlist-start')
+        mp.set_property_number('playlist-start', previous_playlist_pos - 1)
+        mp.set_property('idle', 'no')
+
+        --if someone opens a new playlist manually, then we don't want them to start from
+        --this position. We need to revert the setting back to the way it was
+        mp.register_event('file-loaded', reset_setting(pl_start))
+    end
+
+    --if not idle then there's still an item left from the old playlist
+    if not idle then previous_playlist_pos = previous_playlist_pos + 1 end
+    if o.maintain_pos and previous_playlist_pos ~= mp.get_property_number('playlist-pos-1') then
+        mp.set_property_number('playlist-pos-1', previous_playlist_pos)
+    end
+end
+
+function reset_setting(pl_start)
+    mp.set_property('playlist-start', pl_start)
+    mp.unregister_event(reset_setting)
 end
 
 --this function is for saving session manually
---it tries to setup the file associations again in case the script was disabled
 function save_session()
-    setup_file_associations()
     save_playlist()
 end
 
-function on_load()
-    set_position()
-    mp.unregister_event(on_load)
-end
-
 function reload_session()
-    local is_idle = mp.get_property('idle-active')
-    if is_idle == "no" then is_idle = false
-    else is_idle = true end
-
-    setup_file_associations()
+    local is_idle = mp.get_property_bool('idle-active', true)
 
     --clears everything but the current file
     mp.command('playlist-clear')
-    load_prev_session()
+    load_prev_session(is_idle)
 
     --if idle was not active then we need to remove the currently playing file
-    if not is_idle then mp.command('playlist-remove current') end
-    mp.register_event('file-loaded', on_load)
+    if not is_idle then mp.command('playlist-remove 0') end
 end
 
 function shutdown()
@@ -149,18 +156,15 @@ function shutdown()
 end
 
 
-setup_file_associations()
-
 mp.register_script_message('save-session', save_session)
 mp.register_script_message('reload-session', reload_session)
-
-mp.register_event('file-loaded', on_load)
 mp.register_event('shutdown', shutdown)
 
 
 --I'm not sure if it's possible for the player to be in idle on startup with items in the playlist
 --but I'm doing this to be safe
 if (mp.get_property_number('playlist-count', 0) == 0) then
-    if not o.auto_load then return end
-    load_prev_session()
+    if o.auto_load then
+        load_prev_session(true)
+    end
 end
