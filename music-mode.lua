@@ -93,13 +93,6 @@ function main()
     end
 end
 
---runs when the file is loaded, if script is locked it will do nothing
-function file_loaded()
-    if o.auto then
-        main()
-    end
-end
-
 --sets music mode from script-message
 function script_message(command)
     if command == "on" or command == nil then
@@ -146,45 +139,46 @@ function lock_script_message(command)
     end
 end
 
---manages timer to show metadata on osd
---object based on: https://gist.github.com/AirPort/694d919b16246bc3130c8cc302415a89
-local metadata = {
-    timer = nil,
-    
-	show = (function(self)
-		mp.command("show-text ${filtered-metadata} 2000")
-    end),
-    
-    start_showing = (function(self)
-        msg.verbose('showing metadata')
-        self:show()
-        self.timer:resume()
-    end),
+local metadata = mp.create_osd_overlay('ass-events')
+metadata.hidden = not o.show_metadata
 
-    stop_showing = (function (self)
-        msg.verbose('disabling metadata')
-        self.timer:stop()
-        mp.osd_message("")
-    end)
-}
+function update_metadata()
+    metadata.data = mp.get_property_osd('filtered-metadata')
+end
 
-metadata.timer = mp.add_periodic_timer(2, (function () metadata:show() end))
-metadata.timer:stop()
+function enable_metadata()
+    metadata.hidden = false
+    metadata:update()
+end
+
+function disable_metadata()
+    metadata.hidden = true
+    metadata:update()
+end
 
 --changes visibility of metadata
 function show_metadata(command)
     if command == "on" or command == nil then
-        metadata:start_showing()
+        enable_metadata()
     elseif command == "off" then
-        metadata:stop_showing()
+        disable_metadata()
     elseif command == "toggle" then
-        if metadata.timer:is_enabled() == false then
-            metadata:start_showing()
-        elseif metadata.timer:is_enabled() then
-            metadata:stop_showing()
+        if metadata.hidden then
+            enable_metadata()
+        else
+            disable_metadata()
         end
     else
         msg.warn('unknown command "' .. command .. '"')
+    end
+end
+
+--runs when the file is loaded, if script is locked it will do nothing
+function file_loaded()
+    update_metadata()
+    metadata:update()
+    if o.auto then
+        main()
     end
 end
 
