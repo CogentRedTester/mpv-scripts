@@ -42,6 +42,9 @@ Automatically converts a onedrive share link into a direct path which mpv can pl
 ## playlist-shuffle
 shuffles the playlist and moves the current file to the start of the playlist
 
+## show-errors
+Prints error messages onto the OSD
+
 ## syncplay-compat
 Changes some settings to work well with [Syncplay](https://syncplay.pl/). Currently designed to provide support for local playlists.
 
