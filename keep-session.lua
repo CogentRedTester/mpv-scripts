@@ -42,27 +42,11 @@ end
 
 opt.read_options(o, 'keep_session', function() end)
 
-local session
 local save_file = mp.command_native({"expand-path", o.save_directory}) .. '/prev-session'
-function setup_file_associations()
-    if session then return end
-    msg.verbose('loading previous session file')
-
-    --loads the previous session file
-    session = io.open(save_file, "r+")
-
-    --if the file does not exists create a new one
-    if session == nil then
-        msg.verbose('no session file found, creating new file')
-        session = io.open(save_file, "w+")
-    end
-end
-
 
 --saves the current playlist as a json string
 function save_playlist()
     msg.verbose('saving current session')
-    setup_file_associations()
 
     local playlist = mp.get_property_native('playlist')
 
@@ -71,7 +55,7 @@ function save_playlist()
         return
     end
 
-    session = io.open(save_file, 'w')
+    local session = io.open(save_file, 'w')
     session:write("[playlist]\n")
     session:write(mp.get_property('playlist-pos') .. "\n")
 
@@ -93,18 +77,31 @@ end
 
 --turns the previous json string into a table and adds all the files to the playlist
 function load_prev_session(auto_load)
-    setup_file_associations()
+    --loads the previous session file
+    msg.verbose('loading previous session')
+    local session = io.open(save_file, "r+")
+
+    --this should only occur when loading the script for the first time,
+    --or if someone manually deletes the previous session file
     if session == nil or session:read() ~= "[playlist]" then
+        msg.verbose('no previous session, cancelling load')
+        if auto_load then
+            mp.unregister_event('load_prev_session')
+        end
         return
     end
 
-    local previous_playlist_pos = session:read()
-    local pl_start = mp.get_property('playlist-start')
+    local previous_playlist_pos
+    local pl_start
     if o.maintain_pos then
+        previous_playlist_pos = session:read()
+        pl_start = mp.get_property('playlist-start')
         if previous_playlist_pos ~= pl_start then
             mp.set_property('playlist-start', previous_playlist_pos)
         end
     end
+    
+    session:close()
     mp.commandv('loadlist', save_file)
 
     --removes the event if loaded automatically
