@@ -43,8 +43,7 @@ end
 opt.read_options(o, 'keep_session', function() end)
 
 local session
-local prev_session
-local save_file = mp.command_native({"expand-path", o.save_directory}) .. '/prev-session.txt'
+local save_file = mp.command_native({"expand-path", o.save_directory}) .. '/prev-session'
 function setup_file_associations()
     if session then return end
     msg.verbose('loading previous session file')
@@ -57,8 +56,6 @@ function setup_file_associations()
         msg.verbose('no session file found, creating new file')
         session = io.open(save_file, "w+")
     end
-    prev_session = session:read()
-    msg.debug(prev_session)
 end
 
 
@@ -68,85 +65,55 @@ function save_playlist()
     setup_file_associations()
 
     local playlist = mp.get_property_native('playlist')
-    local working_directory = mp.get_property('working-directory')
 
+    if #playlist == 0 then
+        msg.verbose('session empty, aborting save')
+        return
+    end
+
+    session = io.open(save_file, 'w')
+    session:write("[playlist]\n")
+    session:write(mp.get_property('playlist-pos') .. "\n")
+
+    local working_directory = mp.get_property('working-directory')
     for i, v in ipairs(playlist) do
         msg.debug('adding ' .. v.filename .. ' to playlist')
+
         --if the file is available then it attempts to expand the path in-case of relative playlists
         --presumably if the file contains a :// then it's a network stream, so we shouldn't try to expand the path
         if not (v.filename:find("://")) or (v.filename:find("file://") == 1) then
             v.filename = utils.join_path(working_directory, v.filename)
             msg.debug('expanded path: ' .. v.filename)
         end
-    end
-    local json, error = utils.format_json(playlist)
-    --reopens the file and wipes the old contents
-    session:close()
-    if json == "[]" then
-        msg.verbose('session empty, aborting save')
-        return
-    end
 
-    session = io.open(save_file, 'w')
-    session:write(json)
+        session:write("File=" .. v.filename .. "\n")
+    end
     session:close()
 end
 
 --turns the previous json string into a table and adds all the files to the playlist
-function load_prev_session(idle)
+function load_prev_session(auto_load)
     setup_file_associations()
-    if prev_session == nil or prev_session == "[]" then
+    if session == nil or session:read() ~= "[playlist]" then
         return
     end
 
-    local t, err = utils.parse_json(prev_session)
-    local previous_playlist_pos = 1
-    for i, file in ipairs(t) do
-        msg.debug('adding file: ' .. file.filename)
-        mp.commandv('loadfile', file.filename, "append-play")
-        if o.maintain_pos and file.current then
-            previous_playlist_pos = i
+    local previous_playlist_pos = session:read()
+    local pl_start = mp.get_property('playlist-start')
+    if o.maintain_pos then
+        if previous_playlist_pos ~= pl_start then
+            mp.set_property('playlist-start', previous_playlist_pos)
         end
     end
+    mp.commandv('loadlist', save_file)
 
-    --for some reason I can't set the playlist position manually before playback starts,
-    --so we need to set this option
-    if o.maintain_pos and idle then
-        local pl_start = mp.get_property('playlist-start')
-        mp.set_property_number('playlist-start', previous_playlist_pos - 1)
-        mp.set_property('idle', 'no')
-
-        --if someone opens a new playlist manually, then we don't want them to start from
-        --this position. We need to revert the setting back to the way it was
-        mp.register_event('file-loaded', reset_setting(pl_start))
+    --removes the event if loaded automatically
+    --changing the playlist-start command back immediately doesn't seem to work when auto is enabled
+    if auto_load then
+        mp.unregister_event('load_prev_session')
+    else
+        mp.set_property('playlist-start', pl_start)
     end
-
-    --if not idle then there's still an item left from the old playlist
-    if not idle then previous_playlist_pos = previous_playlist_pos + 1 end
-    if o.maintain_pos and previous_playlist_pos ~= mp.get_property_number('playlist-pos-1') then
-        mp.set_property_number('playlist-pos-1', previous_playlist_pos)
-    end
-end
-
-function reset_setting(pl_start)
-    mp.set_property('playlist-start', pl_start)
-    mp.unregister_event(reset_setting)
-end
-
---this function is for saving session manually
-function save_session()
-    save_playlist()
-end
-
-function reload_session()
-    local is_idle = mp.get_property_bool('idle-active', true)
-
-    --clears everything but the current file
-    mp.command('playlist-clear')
-    load_prev_session(is_idle)
-
-    --if idle was not active then we need to remove the currently playing file
-    if not is_idle then mp.command('playlist-remove 0') end
 end
 
 function shutdown()
@@ -155,16 +122,21 @@ function shutdown()
     end
 end
 
-
-mp.register_script_message('save-session', save_session)
-mp.register_script_message('reload-session', reload_session)
+mp.register_script_message('save-session', save_playlist)
+mp.register_script_message('reload-session', load_prev_session)
 mp.register_event('shutdown', shutdown)
-
 
 --I'm not sure if it's possible for the player to be in idle on startup with items in the playlist
 --but I'm doing this to be safe
 if (mp.get_property_number('playlist-count', 0) == 0) then
     if o.auto_load then
-        load_prev_session(true)
+        local pl_start = mp.get_property('playlist-start')
+        function reset_setting()
+            mp.set_property('playlist-start', pl_start)
+            mp.unregister_event(reset_setting)
+        end
+
+        mp.register_event('start-file', load_prev_session(true))
+        mp.register_event('file-loaded', reset_setting)
     end
 end
