@@ -27,6 +27,9 @@ local o = {
     --if this option is set to true then it will search for coverart on every file
     always_scan_coverart = false,
 
+    --stops looking for coverart after finding a single valid file
+    load_single_file = false,
+
     --file path of a placeholder image to use if no cover art is found
     --will only be used if force-window is enabled
     --leaving it blank will be the same as disabling it
@@ -154,9 +157,8 @@ function addFromDirectory(directory)
     if files == nil then
         msg.verbose('no files could be loaded from ' .. directory)
         return false
-    else
-        msg.verbose('scanning files in ' .. directory)
     end
+    msg.verbose('scanning files in ' .. directory)
 
     --loops through the all the files in the directory to find if any are valid cover art
     for i, file in ipairs(files) do
@@ -164,9 +166,8 @@ function addFromDirectory(directory)
         if isValidCoverart(file) then
             msg.verbose(file .. ' found in whitelist - adding as extra video track...')
             loadCover(utils.join_path(directory, file))
+            if o.load_single_file then break end
         end
-
-        ::continue::
     end
     return true
 end
@@ -211,9 +212,9 @@ function checkForCoverart()
                 if isValidCoverart(name) then
                     msg.verbose('found cover in playlist')
                     loadCover(v.filename)
+                    if o.load_single_file then break end
                 end
             end
-            ::continue::
         end
     end
 
