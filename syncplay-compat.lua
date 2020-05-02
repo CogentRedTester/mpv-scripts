@@ -17,6 +17,7 @@ local msg = require 'mp.msg'
 
 local o = {
     enable = false,
+    inf_loop = true,
 }
 
 opt.read_options(o, 'syncplay', function() enable() end)
@@ -33,8 +34,10 @@ local function parse_loop(name, pref)
     mp.commandv('show-text', 'default ' .. name .. ' handling is disabled, see script settings', 3000)
 
     if pref == "no" then
+        o.inf_loop = false
         return
     end
+    o.inf_loop = true
     mp.set_property('loop-playlist', 'no')
 end
 
@@ -43,7 +46,11 @@ local function playlist_next()
     local length = mp.get_property_number('playlist-count')
 
     if (current_pos + 1 == length) and o.inf_loop then
-        mp.set_property_number('playlist-pos', 0)
+        if o.inf_loop then
+            mp.set_property_number('playlist-pos', 0)
+        else
+            mp.set_property_number('percent-pos', 100)
+        end
     else
         mp.command('playlist-next')
     end
