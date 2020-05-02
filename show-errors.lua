@@ -3,7 +3,9 @@ local opt = require 'mp.options'
 
 local o = {
     --add a blacklist for error messages to not print to the OSD
-    --can be either the command prefix, a.k.a "[ffmpeg]"
+    --each statement must be seperated by a '|' character. Do not leave
+    --spaces around the | unless they are part of the blacklisted string
+    --can be either the command prefix, a.k.a "ffmpeg"
     --or the error text, but not both
     blacklist = ""
 }
@@ -12,8 +14,7 @@ opt.read_options(o, 'show_errors')
 
 --splits the string into a table on the semicolons
 local blacklist = {}
-for str in string.gmatch(o.blacklist, "([^;]+)") do
-        str = str
+for str in string.gmatch(o.blacklist, "([^|]+)") do
         blacklist[str] = true
 end
 
