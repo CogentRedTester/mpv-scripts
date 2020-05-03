@@ -13,7 +13,10 @@ local o = {
 
     --also show warning messages on the OSD
     --keep in mind that these can be quite wordy in comparison to errors
-    warnings = false
+    warnings = false,
+
+    --number of seconds to show the OSD messages
+    timeout = 4
 }
 
 opt.read_options(o, 'show_errors')
@@ -50,7 +53,7 @@ mp.register_event('log-message', function(log)
     ov.data = ov.data .. message
     ov:update()
 
-    mp.add_timeout(4, function ()
+    mp.add_timeout(o.timeout, function ()
         local endln = ov.data:find('\n') + 1
         ov.data = ov.data:sub(endln)
         ov:update()
