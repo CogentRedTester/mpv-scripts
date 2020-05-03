@@ -48,13 +48,6 @@ Prints error messages onto the OSD
 ## syncplay-compat
 Changes some settings to work well with [Syncplay](https://syncplay.pl/). Currently designed to provide support for local playlists.
 
-# Modified scripts:
-
-## autoload
-Exactly the same as the script available [here](https://github.com/mpv-player/mpv/blob/master/TOOLS/lua/autoload.lua)
-
-However, instead of loading automatically it only loads when a keybind is pressed (Ctrl+f8 by default)
-
 # Other scripts
 
 [betterchapters](https://github.com/mpv-player/mpv/issues/4738#issuecomment-321298846)
