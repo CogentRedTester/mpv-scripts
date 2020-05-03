@@ -58,5 +58,3 @@ However, instead of loading automatically it only loads when a keybind is presse
 # Other scripts
 
 [betterchapters](https://github.com/mpv-player/mpv/issues/4738#issuecomment-321298846)
-
-[nextfile](https://github.com/jonniek/mpv-nextfile)
