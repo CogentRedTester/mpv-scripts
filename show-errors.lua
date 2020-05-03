@@ -54,6 +54,7 @@ mp.register_event('log-message', function(log)
     ov:update()
 
     mp.add_timeout(o.timeout, function ()
+        local endln = ov.data:find('\n') + 1
         ov.data = ov.data:sub(message:len() + 1)
         ov:update()
     end)
