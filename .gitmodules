@@ -1,6 +1,6 @@
 [submodule "script repositories.disable/mpv-playlistmanager"]
 	path = script repositories.disable/mpv-playlistmanager
-	url = git@github.com:CogentRedTester/mpv-playlistmanager.git
+	url = git@github.com:jonniek/mpv-playlistmanager.git
 	branch = master
 [submodule "script repositories.disable/mpv-nextfile"]
 	path = script repositories.disable/mpv-nextfile
