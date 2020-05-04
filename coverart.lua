@@ -28,7 +28,8 @@ local o = {
     always_scan_coverart = false,
 
     --stops looking for coverart after finding a single valid file
-    load_single_file = false,
+    --and doesn't look at all if the file already has internal coverart
+    load_extra_files = true,
 
     --file path of a placeholder image to use if no cover art is found
     --will only be used if force-window is enabled
@@ -177,6 +178,11 @@ function checkForCoverart()
     if not o.always_scan_coverart and not is_audio_file() then
         msg.verbose('file is not an audio file, aborting coverart search')
         loadPlaceholder()
+        return
+    end
+
+    --if the file has video tracks then we cancel the cover lookup
+    if (not o.load_extra_files) and (mp.get_property_number('vid', 0) ~= 0) then
         return
     end
 
