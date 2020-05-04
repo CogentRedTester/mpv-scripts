@@ -47,7 +47,3 @@ Prints error messages onto the OSD
 
 ## syncplay-compat
 Changes some settings to work well with [Syncplay](https://syncplay.pl/). Currently designed to provide support for local playlists.
-
-# Other scripts
-
-[betterchapters](https://github.com/mpv-player/mpv/issues/4738#issuecomment-321298846)
