@@ -9,7 +9,6 @@ mp.add_hook('on_load', 50, function()
 
     if path:sub(-4) ~= ".asx" then return end
     msg.info('asx playlist detected, attempting to parse')
-    readingASX = true
     mp.commandv('loadlist', path)
 
     local playlist = mp.get_property_native('playlist')
