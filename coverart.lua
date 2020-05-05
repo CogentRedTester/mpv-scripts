@@ -170,10 +170,10 @@ function addFromDirectory(directory)
         if isValidCoverart(file) then
             msg.verbose(file .. ' found in whitelist - adding as extra video track...')
             loadCover(utils.join_path(directory, file))
-            if o.load_single_file then break end
+            if o.load_single_file then return 1 end
         end
     end
-    return true
+    return 0
 end
 
 function checkForCoverart()
@@ -205,9 +205,11 @@ function checkForCoverart()
     if o.load_from_filesystem then
         --loads the files from the directory
         succeeded = addFromDirectory(directory)
+        if o.load_single_file and succeeded == 1 then return end
 
         if o.check_parent and succeeded then
-            addFromDirectory(directory .. "/../")
+            succeeded = addFromDirectory(directory .. "/../")
+            if o.load_single_file and succeeded == 1 then return end
         end
     end
     if ((not succeeded) and o.auto_load_from_playlist) or o.load_from_playlist then
@@ -221,7 +223,7 @@ function checkForCoverart()
                 if isValidCoverart(name) then
                     msg.verbose('found cover in playlist')
                     loadCover(v.filename)
-                    if o.load_single_file then break end
+                    if o.load_single_file then return end
                 end
             end
         end
