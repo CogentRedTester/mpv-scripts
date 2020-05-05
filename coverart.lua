@@ -54,7 +54,10 @@ local o = {
     check_parent = false,
 
     --attempts to load from playlist automatically if it can't access the filesystem
-    auto_load_from_playlist = true
+    auto_load_from_playlist = true,
+
+    --skip coverart files if they are in the playlist
+    skip_coverart = false
 }
 
 local mp = require 'mp'
@@ -236,3 +239,13 @@ mp.register_event('file-loaded', checkForCoverart)
 
 --to force an update during runtime
 mp.register_script_message('load-coverart', checkForCoverart)
+
+--skips coverart in the playlist
+if o.skip_coverart then
+    mp.add_hook('on_load', 30, function()
+        if isValidCoverart(mp.get_property('filename', '')) and mp.get_property_number('playlist-count') > 1 then
+            msg.info('skipping coverart in playlist')
+            mp.command('playlist-next')
+        end
+    end)
+end
