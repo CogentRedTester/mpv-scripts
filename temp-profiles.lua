@@ -14,12 +14,18 @@
 
 local o = {
     timeout = 2,
+    disabled = '[]'
 }
 
 local opt = require 'mp.options'
 local msg = require 'mp.msg'
+local utils = require 'mp.utils'
 local timers = {}
-local disabled = {}
+local disabled_json = utils.parse_json(o.disabled)
+local disabled = {box = true}
+for i,v in ipairs(disabled_json) do
+    disabled[v] = true
+end
 
 opt.read_options(o, 'temp_profiles')
 
