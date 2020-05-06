@@ -1,11 +1,13 @@
 --[[
     This script automatically loads external coverart files into mpv as additional video tracks.
 
-    By default the script searches the folder than the current file is from, but it can also search in
+    By default the script searches the folder that the current file is in, but it can also search in
     the parent folder and the current playlist. By default the script will automatically search the playlist
     if it can't access the directory of the current file (usually when playing a network file).
 
-    Look at the below for the full list of options, see the mpv manual for how to set options (the osc chapter has good examples)
+    This script respects the --audio-display option.
+
+    Look at the below table for the full list of options, see the mpv manual for how to set options (the osc chapter has good examples)
     the option prefix is 'coverart-'
 ]]--
 
@@ -23,11 +25,10 @@ local o = {
     imageExts = 'jpg;jpeg;png;bmp;gif',
 
     --by default it only loads coverart if it detects the file is an audio file
-    --an audio file is one with zero video tracks, or one where the first video track has < 2 fps (an image)
-    --if this option is set to true then it will search for coverart on every file
+    --an audio file is one where mpv reports the first stream as being audio
     always_scan_coverart = false,
 
-    --stops looking for coverart after finding a single valid file
+    --if false stops looking for coverart after finding a single valid file
     --and doesn't look at all if the file already has internal coverart
     load_extra_files = true,
 
@@ -53,7 +54,7 @@ local o = {
     --currently doesn't do anything when loading from a playlist
     check_parent = false,
 
-    --attempts to load from playlist automatically if it can't access the filesystem
+    --attempts to load from playlist automatically if it can't find anything on the file system
     auto_load_from_playlist = true,
 
     --skip coverart files if they are in the playlist
@@ -77,14 +78,12 @@ function create_table(input)
     return t
 end
 
---a music file has no video track, or the video track is less than 2 fps (an image file)
+--a music file is one where mpv returns an audio stream as the first track
 function is_audio_file()
-    if mp.get_property_number('vid', 0) == 0 then
+    if mp.get_property('track-list/0/type') == "audio" then
         return true
-    else
-        if mp.get_property_number('container-fps', 0) < 2 and mp.get_property_number('aid', 0) ~= 0 then
-            return true
-        end
+    elseif mp.get_property('track-list/0/albumart') == "yes" then
+        return true
     end
     return false
 end
@@ -103,12 +102,11 @@ end
 --loads a placeholder image as cover art for the file
 function loadPlaceholder()
     if o.placeholder == "" then return end
-
     if not (mp.get_property('vid') == "no" and mp.get_property_bool('force-window')) then return end
 
     msg.verbose('file does not have video track, loading placeholder')
     local placeholder = mp.command_native({"expand-path", o.placeholder})
-    mp.commandv('video-add', placeholder)
+    loadCover(placeholder)
 end
 
 --checks if the given file matches the cover art requirements
@@ -148,7 +146,7 @@ end
 function loadCover(path)
     --adds the new file to the playing list
     --if there is no video track currently selected then it autoloads track #1
-    if mp.get_property_number('vid', 0) == 0 then
+    if mp.get_property_number('vid', 0) == 0 and mp.get_property('options/vid') ~= "no" then
         mp.commandv('video-add', path)
     else
         mp.commandv('video-add', path, "auto")
@@ -165,19 +163,27 @@ function addFromDirectory(directory)
     msg.verbose('scanning files in ' .. directory)
 
     --loops through the all the files in the directory to find if any are valid cover art
+    local success = false
     for i, file in ipairs(files) do
         --if the name matches one in the whitelist then load it
         if isValidCoverart(file) then
             msg.verbose(file .. ' found in whitelist - adding as extra video track...')
+            success = true
             loadCover(utils.join_path(directory, file))
-            if o.load_single_file then return 1 end
+            if not o.load_extra_files then return true end
         end
     end
-    return 0
+    return success
 end
 
 function checkForCoverart()
-    --does not look for cover art if the file is not ana audio file
+    --aborts the script if audio-display is disabled
+    if mp.get_property('audio-display', "no") == "no" then
+        msg.verbose('audio-display is disabled, aborting script')
+        return
+    end
+
+    --does not look for cover art if the file is not an audio file
     if not o.always_scan_coverart and not is_audio_file() then
         msg.verbose('file is not an audio file, aborting coverart search')
         loadPlaceholder()
@@ -187,6 +193,19 @@ function checkForCoverart()
     --if the file has video tracks then we cancel the cover lookup
     if (not o.load_extra_files) and (mp.get_property_number('vid', 0) ~= 0) then
         return
+    end
+
+    --if auto is not selected, then we need to scan the tracklist to
+    --see if there is existing coverart
+    if (not o.load_extra_files) and mp.get_property('options/vid') ~= "auto" then
+        msg.verbose('scanning track-list for coverart')
+        local tracks = mp.get_property_native('track-list', {})
+        for i,v in ipairs(tracks) do
+            if v.type == "video" then
+                msg.verbose('video stream found, aborting coverart search')
+                return
+            end
+        end
     end
 
     --finds the local directory of the file
@@ -201,15 +220,15 @@ function checkForCoverart()
     local directory = utils.split_path(exact_path)
     msg.verbose('directory: ' .. directory)
 
-    local succeeded
+    local succeeded = false
     if o.load_from_filesystem then
         --loads the files from the directory
         succeeded = addFromDirectory(directory)
-        if o.load_single_file and succeeded == 1 then return end
+        if not o.load_extra_files and succeeded then return end
 
         if o.check_parent and succeeded then
             succeeded = addFromDirectory(directory .. "/../")
-            if o.load_single_file and succeeded == 1 then return end
+            if not o.load_extra_files and succeeded then return end
         end
     end
     if ((not succeeded) and o.auto_load_from_playlist) or o.load_from_playlist then
@@ -223,14 +242,15 @@ function checkForCoverart()
                 if isValidCoverart(name) then
                     msg.verbose('found cover in playlist')
                     loadCover(v.filename)
-                    if o.load_single_file then return end
+                    if not o.load_extra_files then return end
+                    succeeded = true
                 end
             end
         end
     end
 
     --loads a placeholder image if no covers were found and a window is forced
-    loadPlaceholder()
+    if not succeeded then loadPlaceholder() end
 end
 
 opt.read_options(o, 'coverart')
