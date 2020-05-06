@@ -14,27 +14,18 @@
 
 local o = {
     timeout = 2,
-    disabled = '[]'
 }
 
 local opt = require 'mp.options'
 local msg = require 'mp.msg'
-local utils = require 'mp.utils'
 
 local t = {}
-local disabled_json = utils.parse_json(o.disabled)
-local disabled = {box = true}
-for i,v in ipairs(disabled_json) do
-    disabled[v] = true
-end
 
 opt.read_options(o, 'temp_profiles')
 
 --specific profile commands are stored in a table with the following structure:
 --t[profile] = {undo = 'undo_profile', timer = mp.add_timeout('timeout')}
 function apply_profile(profile, undo_profile, timeout)
-    if disabled[profile] then return end
-
     msg.debug('recieved input')
     if timeout == nil then timeout = o.timeout end
     if undo_profile == nil then undo_profile = "" end
@@ -66,14 +57,6 @@ function undo_profile(profile)
 end
 
 mp.register_script_message('temp-profile', apply_profile)
-
-mp.register_script_message('disable-temp-profile', function(profile)
-    disabled[profile] = true
-end)
-mp.register_script_message('enable-temp-profile', function(profile)
-    disabled[profile] = false
-end)
-
 
 mp.add_hook('on_unload', 50, function()
     for profile, timer in pairs(t) do
