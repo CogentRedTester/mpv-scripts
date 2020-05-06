@@ -59,3 +59,8 @@ mp.register_event('log-message', function(log)
         ov:update()
     end)
 end)
+
+mp.register_script_message('clear-errors', function()
+    ov.data = ""
+    ov:update()
+end)
