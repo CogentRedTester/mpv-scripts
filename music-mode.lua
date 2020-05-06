@@ -1,6 +1,6 @@
 --[[
 	A simple script which loads a music profile whenever an audio file is played.
-	An audio file is one with no video track, or when its video track has an fps < 2 (an image file).
+	An audio file is a file in which entry 1 in the track list is an audio stream, or albumart
 	There is also an option to set an 'undo' profile for when video files are loaded whilst in music mode
 
 	Profiles are only ever applied when switching between audio or video files, so you can change
@@ -41,14 +41,12 @@ o = {
 
 opt.read_options(o, 'musicmode', function() msg.verbose('options updated') end)
 
---a music file has no video track, or the video track is less than 2 fps (an image file)
+--a music file is one where mpv returns an audio stream as the first track
 function is_audio_file()
-    if mp.get_property_number('vid', 0) == 0 then
+    if mp.get_property('track-list/0/type') == "audio" then
         return true
-    else
-        if mp.get_property_number('container-fps', 0) < 2 and mp.get_property_number('aid', 0) ~= 0 then
-            return true
-        end
+    elseif mp.get_property('track-list/0/albumart') == "yes" then
+        return true
     end
     return false
 end
