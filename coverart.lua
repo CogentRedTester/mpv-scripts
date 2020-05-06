@@ -5,7 +5,9 @@
     the parent folder and the current playlist. By default the script will automatically search the playlist
     if it can't access the directory of the current file (usually when playing a network file).
 
-    This script respects the --audio-display option.
+    If --audio-display=no is set then this script will not load any coverart. If --vid=no is set then this
+    script will load external coverart, but will not select them my default. Any other value for vid will only
+    properly select internal coverart, though you might get lucky and have it select the right track by chance.
 
     Look at the below table for the full list of options, see the mpv manual for how to set options (the osc chapter has good examples)
     the option prefix is 'coverart-'
@@ -146,7 +148,7 @@ end
 function loadCover(path)
     --adds the new file to the playing list
     --if there is no video track currently selected then it autoloads track #1
-    if mp.get_property_number('vid', 0) == 0 and mp.get_property('options/vid') ~= "no" then
+    if mp.get_property_number('vid', 0) == 0 and mp.get_property('options/vid') == "auto" then
         mp.commandv('video-add', path)
     else
         mp.commandv('video-add', path, "auto")
