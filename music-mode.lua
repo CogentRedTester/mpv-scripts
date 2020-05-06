@@ -34,6 +34,10 @@ o = {
     --probably only useful if auto is disabled
     enable = false,
 
+    --the script will also enable the following input section when music mode is enabled
+    --see the mpv manual for details on sections
+    input_section = "music",
+
     --dispays the metadata of the track on the osd when music mode is on
     --there is also a script message to enable this seperately
     show_metadata = false
@@ -57,6 +61,7 @@ local musicMode = false
 --enables music mode
 function activate()
     mp.commandv('apply-profile', o.profile)
+    mp.commandv('enable-section', o.input_section)
     mp.osd_message('Music Mode enabled')
 
     if o.show_metadata then
@@ -69,6 +74,7 @@ end
 --disables music mode
 function deactivate()
     mp.commandv('apply-profile', o.undo_profile)
+    mp.commandv('disable-section', o.input_section)
     mp.osd_message('Music Mode disabled')
 
     if o.show_metadata then
