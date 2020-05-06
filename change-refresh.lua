@@ -402,9 +402,9 @@ function matchVideo()
 
     --saves either the estimated or specified fps of the video
     if (options.estimated_fps == true) then
-        var.new_fps = mp.get_property_number('estimated-vf-fps')
+        var.new_fps = mp.get_property_number('estimated-vf-fps', 0)
     else
-        var.new_fps = mp.get_property_number('container-fps')
+        var.new_fps = mp.get_property_number('container-fps', 0)
     end
     
     --Floor is used because 23fps video has an actual framerate of ~23.9, this occurs across many video rates
