@@ -13,18 +13,18 @@
 ]]--
 
 local o = {
-    enable = true,
     timeout = 2,
 }
 
 local opt = require 'mp.options'
 local msg = require 'mp.msg'
 local timers = {}
+local disabled = {}
 
-opt.read_options(o, 'temp_profiles', function(list) update_opts(list) end)
+opt.read_options(o, 'temp_profiles')
 
 function apply_profile(profile, undo_profile, timeout)
-    if not o.enable then return end
+    if disabled[profile] then return end
 
     msg.debug('recieved input')
     if timeout == nil then timeout = o.timeout end
@@ -54,6 +54,13 @@ end
 
 mp.register_script_message('temp-profile', apply_profile)
 
+mp.register_script_message('disable-temp-profile', function(profile)
+    disabled[profile] = true
+end)
+mp.register_script_message('enable-temp-profile', function(profile)
+    disabled[profile] = false
+end)
+
 
 mp.add_hook('on_unload', 50, function()
     for profile, timer in pairs(timers) do
@@ -61,17 +68,3 @@ mp.add_hook('on_unload', 50, function()
         undo_profile(profile)
     end
 end)
-
---update options
-function update_opts(list)
-    if list.enable then
-        if not o.enable then
-            for profile, timer in pairs(timers) do
-                if timer:is_enabled() then
-                    undo_profile(profile)
-                end
-            end
-        end
-    end
-end
-update_opts({timeout = true, enable = true})
