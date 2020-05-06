@@ -20,7 +20,8 @@ local o = {
 local opt = require 'mp.options'
 local msg = require 'mp.msg'
 local utils = require 'mp.utils'
-local timers = {}
+
+local t = {}
 local disabled_json = utils.parse_json(o.disabled)
 local disabled = {box = true}
 for i,v in ipairs(disabled_json) do
@@ -29,33 +30,39 @@ end
 
 opt.read_options(o, 'temp_profiles')
 
+--specific profile commands are stored in a table with the following structure:
+--t[profile] = {undo = 'undo_profile', timer = mp.add_timeout('timeout')}
 function apply_profile(profile, undo_profile, timeout)
     if disabled[profile] then return end
 
     msg.debug('recieved input')
     if timeout == nil then timeout = o.timeout end
-    if timers[profile] == nil then
-        timers[profile] = mp.add_timeout(timeout, function()
-            msg.verbose('applying undo profile ' .. undo_profile)
-            mp.commandv('apply-profile', undo_profile)
-            timers[profile]:kill()
+    if undo_profile == nil then undo_profile = "" end
+    if t[profile] == nil then t[profile] = {} end
+    t[profile].undo = undo_profile
+
+    if t[profile].timer == nil then
+        t[profile].timer = mp.add_timeout(timeout, function()
+            msg.verbose('applying undo profile ' .. t[profile].undo)
+            mp.commandv('apply-profile', t[profile].undo)
+            t[profile].timer:kill()
         end)
-    elseif timers[profile]:is_enabled() then
-        timers[profile]:kill()
-        timers[profile]:resume()
+    elseif t[profile].timer:is_enabled() then
+        t[profile].timer.timeout = timeout
+        t[profile].timer:kill()
+        t[profile].timer:resume()
         return
     end
     msg.verbose('applying profile: ' .. profile)
     mp.commandv('apply-profile', profile)
-
-    timers[profile].timeout = timeout
-    timers[profile]:resume()
+    t[profile].timer.timeout = timeout
+    t[profile].timer:resume()
 end
 
 function undo_profile(profile)
-    msg.verbose('applying undo profile ' .. profile)
-    mp.commandv('apply-profile', profile)
-    timers[profile]:kill()
+    msg.verbose('applying undo profile ' .. t[profile].undo)
+    mp.commandv('apply-profile', t[profile].undo)
+    t[profile].timer:kill()
 end
 
 mp.register_script_message('temp-profile', apply_profile)
@@ -69,8 +76,7 @@ end)
 
 
 mp.add_hook('on_unload', 50, function()
-    for profile, timer in pairs(timers) do
-        timer:kill()
+    for profile, timer in pairs(t) do
         undo_profile(profile)
     end
 end)
