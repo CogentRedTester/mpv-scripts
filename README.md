@@ -9,9 +9,7 @@ Parses .asx playlists. This is very hacky, and practically useless considering h
 ## change-refresh
 
 Uses nircmd (windows only) to change the resolution and refresh rate of the monitor to match the playing video.
-
 Saves the original monitor resolution and reverts changes on exit and when hotkey is pressed.
-
 Full description in file.
 
 ## coverart
@@ -50,3 +48,6 @@ Prints error messages onto the OSD
 
 ## syncplay-compat
 Changes some settings to work well with [Syncplay](https://syncplay.pl/). Currently designed to provide support for local playlists.
+
+## temp-profiles
+Allows you to apply a profile with a timeout, after which another profile is called to revert the changes. Works well with osc layout changes.
