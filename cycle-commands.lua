@@ -39,83 +39,6 @@ o = {
 
 opt.read_options(o, 'cycle-commands')
 
---tests if the character at the specified position is a seperator character
-function is_seperator(inputstr, position)
-    local sep = inputstr:find('['..o.cycle_seperator .. o.command_seperator .. o.word_seperator..']', position)
-
-    if sep == position then
-        return true
-    else
-        return false
-    end
-end
-
---splits the string into an array of strings around the separator
-function splitString(inputstr, seperator)
-    local t = {}
-    msg.debug('splitting "' .. inputstr .. '" around "' .. seperator .. '"')
-
-    while inputstr ~= "" do
-        local endstr
-        local char = ""
-        local quote = 0
-
-        --removes all the seperator characters from the front of the substring
-        while is_seperator(inputstr, 1) do
-            inputstr = inputstr:sub(2)
-        end
-
-        --skips the quotation check if it's not words being seperated
-        --this fixes some smart guy deciding to enclose the command name in quotes
-        --which would result in the command and its arguments being split in two
-        if seperator ~= o.word_seperator then
-            goto skip_Quote_Check
-        end
-
-        --testing if the first character is a quote
-        quote = inputstr:find('["\']')
-        if quote == 1 then
-            msg.verbose('quote found, encapsulating string')
-            char = inputstr:sub(1, 1)
-
-            --finding the end of the quotes
-            endstr = inputstr:find(char, 2)
-        end
-
-        ::skip_Quote_Check::
-        if not (quote == 1) then
-            --if no quote is found then it finds the next seperator
-            endstr = inputstr:find(seperator)
-        end
-
-        --sets the end of the string to the full length if nothing could be found
-        --usually happens for the last item in an array (last word, last command, etc)
-        --also happens if someone forgets to include a close bracket, in that case the entire rest of the
-        --command is counted as one single long string.
-        if endstr == nil then
-            endstr = inputstr:len()
-        end
-
-        --removes extra seperator characters from the end of the substring (put them in quotes if you want them)
-        --this is never run if a quote is found
-        local newstr = inputstr:sub(1, endstr)
-        msg.debug('operating on substring "' .. newstr .. '"')
-        while is_seperator(newstr, newstr:len()) do
-            newstr = newstr:sub(1, newstr:len() - 1)
-        end
-
-        --removes the last character if it's a quote and the first character of the substring is also a quote
-        if newstr:find(char, -1) and quote == 1 then
-            newstr = newstr:sub(2, newstr:len() - 1)
-        end
-
-        msg.verbose('inserting "' .. newstr .. '" to table')
-        table.insert(t, newstr)
-        inputstr = inputstr:sub(endstr + 1)
-    end
-    return t
-end
-
 --keeps track of commands and iterators
 commands = {}
 iterators = {}
@@ -136,28 +59,8 @@ function main(str)
     if commands[str] == nil then
         msg.verbose('unknown cycle, creating command table')
         iterators[str] = 0
-
-        --splits each cycle around the character '|'
-        local t = splitString(str, o.cycle_seperator)
-        commands[str] = t
-        msg.debug(utils.to_string(t))
-
-        --splits each command in each cycle around ';'
-        for i=1, #commands[str], 1 do
-            local t = splitString(commands[str][i], o.command_seperator)
-            msg.debug(utils.to_string(t))
-            commands[str][i] = t
-
-            --splits each word in each command around ' '
-            for j=1, #commands[str][i], 1 do
-                local t = splitString(commands[str][i][j], o.word_seperator)
-                msg.debug(utils.to_string(t))
-                commands[str][i][j] = t
-            end
-        end
-
-        msg.verbose('command table complete')
-        msg.debug(utils.to_string(commands[str]))
+        msg.verbose('parsing table for "' .. str)
+        commands[str] = utils.parse_json(str)
     end
 
     --moves the iterator forward
