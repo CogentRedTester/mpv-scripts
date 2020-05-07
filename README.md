@@ -12,6 +12,9 @@ Uses nircmd (windows only) to change the resolution and refresh rate of the moni
 Saves the original monitor resolution and reverts changes on exit and when hotkey is pressed.
 Full description in file.
 
+## command-timeout
+Sends an input command after a specified delay
+
 ## coverart
 Automatically scans the directory of the currently loaded file and loads any valid cover art into mpv as additional video tracks.
 Has options for selecting what file names and types are considered valid.
