@@ -15,6 +15,7 @@ local o = {
 }
 
 local opt = require 'mp.options'
+local msg = require 'mp.msg'
 local utils = require 'mp.utils'
 
 opt.read_options(o, 'profile_command', function()
