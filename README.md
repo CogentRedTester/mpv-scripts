@@ -44,7 +44,7 @@ Automatically converts a onedrive share link into a direct path which mpv can pl
 shuffles the playlist and moves the current file to the start of the playlist
 
 ## profile-command
-Parses a script-opt and sends it as a command. Allows commands to be sent via profiles. Currently can only do 1 command at a time
+Parses a script-opt and sends it as a command. Allows input commands to be sent via profiles.
 
 ## show-errors
 Prints error messages onto the OSD
