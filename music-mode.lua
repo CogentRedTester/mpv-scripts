@@ -61,7 +61,7 @@ local musicMode = false
 --enables music mode
 function activate()
     mp.commandv('apply-profile', o.profile)
-    mp.commandv('enable-section', o.input_section)
+    mp.commandv('enable-section', o.input_section, "allow-vo-dragging+allow-hide-cursor")
     mp.osd_message('Music Mode enabled')
 
     if o.show_metadata then
