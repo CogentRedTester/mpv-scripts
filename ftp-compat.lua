@@ -94,7 +94,7 @@ function parseMessage(event)
 
     --isolating the file that was added
     sub = error:sub(28, -3)
-    if sub:find("ftp://") ~= 1 then return end
+    if sub:find("s?ftp://") ~= 1 then return end
 
     --modifying the URL
     sub = decodeURI(sub)
