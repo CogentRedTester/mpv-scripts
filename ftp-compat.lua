@@ -118,7 +118,7 @@ function testFTP()
     path = mp.get_property('stream-open-filename')
     prevSub = ""
 
-    if path:find("ftp://") == 1 then
+    if path:find("s?ftp://") == 1 then
         msg.info('FTP protocol detected, modifying settings')
         ftp = true
         setFTPOpts()
