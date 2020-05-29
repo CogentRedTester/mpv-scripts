@@ -1,18 +1,24 @@
 --[[
-    This script allows you to search for keybinds and commands and have matching entries display on the OSD.
+    This script allows you to search for keybinds, properties, options and commands and have matching entries display on the OSD.
     The search is case insensitive, and the script sends the filter directly to a lua string match function,
     so you can use patterns to get more complex filtering.
 
-    The keybind page searches the key, command, section, and any comments. The command page searches
-    just the command name. The search page will remain open until told to close. This key is esc.
+    The keybind page searches and displays the key, command, section, and any comments.
+    The command page searches just the command name, but also shows information about arguments.
+    The properties page will search just the property name, but will also show contents of the property
+    The options page will search the name and option choices, it shows default values, choices, and ranges
+    
+    The search page will remain open until told to close. This key is esc.
 
-    Both lists have a jumplist implementation, while on the search page you can press the number keys, 1-9,
+    The keybind and command pages have a jumplist implementation, while on the search page you can press the number keys, 1-9,
     to select the entry at that location. On the keybinds page it runs the command without exitting the page,
     on the commands page it exits the page and loads the command up into console.lua.
 
     The default commands are:
         f12 script-binding search-keybinds
         Ctrl+f12 script-binding search-commands
+        Shift+f12 script-binding search-properties
+        Alt+f12 script-binding search-options
 
     Once the command is sent the console will open with a pre-entered search command, simply add a query string as the first argument.
 ]]--
@@ -44,7 +50,19 @@ local o = {
     ass_outerbrackets = "{\\fs20\\c&H00cccc>&}",
     ass_args = "{\\fs20\\c&H33ff66>&}",
     ass_optargs = "{\fs20\\c&Hffff00>&}",
-    ass_argtype = "{\\c&H00cccc>&}{\\fs12}"
+    ass_argtype = "{\\c&H00cccc>&}{\\fs12}",
+
+    --colours for property list
+    ass_properties = "{\\c&Hffccff>\\fs20\\q2}",
+    ass_propertycurrent = "{\\c&Hffff00>&}",
+
+    --colours for options list
+    ass_options = "{\\c&Hffccff>\\fs20}",
+    ass_optionstype = "{\\c&H00cccc>&}{\\fs12}",
+    ass_optionsdefault = "{\\c&H33ff66>&\\fs20}",
+
+    --list of choices for choice options, ranges for numeric options
+    ass_optionsspec = "{\\c&Hffff00>&}",
 }
 
 opt.read_options(o, "search_page")
@@ -104,24 +122,7 @@ end
 
 --add results to the keybinds page
 function add_result_keybind(key, section, cmd, comment, num_entries)
-    create_keybind(num_entries, function()
-        ov.hidden = true
-        ov:update()
-        mp.command(cmd)
-
-        mp.add_timeout(osd_display/1000, function()
-            ov.hidden = false
-            ov:update()
-        end)
-    end)
-
-    key = fix_chars(key)
-    section = fix_chars(section)
-    cmd = fix_chars(cmd)
-    comment = fix_chars(comment)
-
-    --appends the result to the list
-    ov.data = ov.data .. "\n" .. o.ass_allkeybindresults .. o.ass_key .. key .. o.ass_section .. section .. o.ass_cmdkey .. cmd .. o.ass_comment .. comment
+    
 end
 
 --loads the header for the search page
@@ -172,33 +173,32 @@ function search_keys(keyword)
 
             num_entries = num_entries + 1
 
-            --stops the lop if too many files are added
+            --stops the loop if too many files are added
             if num_entries > o.max_list then break end
-            add_result_keybind(key, section, cmd, comment, num_entries)
+
+            --creates the entries
+            create_keybind(num_entries, function()
+                ov.hidden = true
+                ov:update()
+                mp.command(cmd)
+
+                mp.add_timeout(osd_display/1000, function()
+                    ov.hidden = false
+                    ov:update()
+                end)
+            end)
+
+            key = fix_chars(key)
+            section = fix_chars(section)
+            cmd = fix_chars(cmd)
+            comment = fix_chars(comment)
+
+            --appends the result to the list
+            ov.data = ov.data .. "\n" .. o.ass_allkeybindresults .. o.ass_key .. key .. o.ass_section .. section .. o.ass_cmdkey .. cmd .. o.ass_comment .. comment
         end
     end
 
     open_overlay()
-end
-
---adds the results to the list
-function add_result_cmd(cmd, args, num_entries)
-    cmd = fix_chars(cmd)
-
-    ov.data = ov.data .. "\n" .. o.ass_cmd .. cmd .. "        "..o.ass_outerbrackets.."("
-    for _,arg in ipairs(args) do
-        if arg.optional then
-            ov.data = ov.data .. o.ass_optargs
-        else
-            ov.data = ov.data .. o.ass_args
-        end
-        ov.data = ov.data .. " " .. arg.name .. o.ass_argtype.." ("..arg.type.."), "
-    end
-    ov.data = ov.data .. o.ass_outerbrackets ..") \\N"
-    create_keybind(num_entries, function()
-        mp.commandv('script-message-to', 'console', 'type', cmd .. " ")
-        close_overlay()
-    end)
 end
 
 --search commands
@@ -207,7 +207,7 @@ function search_commands(keyword)
     load_header(keyword, "cmd")
 
     local num_entries = 0
-    for i,command in ipairs(commands) do
+    for _,command in ipairs(commands) do
         if
         command.name:lower():find(keyword)
         or command.name:lower():find(keyword:lower())
@@ -217,10 +217,82 @@ function search_commands(keyword)
 
             --if the entries has gone above the max then stop adding more
             if num_entries > o.max_list then break end
-            add_result_cmd(command.name, command.args, num_entries)
+            cmd = fix_chars(command.name)
+
+            ov.data = ov.data .. "\n" .. o.ass_cmd .. cmd .. "        "..o.ass_outerbrackets.."("
+            for _,arg in ipairs(command.args) do
+                if arg.optional then
+                    ov.data = ov.data .. o.ass_optargs
+                else
+                    ov.data = ov.data .. o.ass_args
+                end
+                ov.data = ov.data .. " " .. arg.name .. o.ass_argtype.." ("..arg.type.."), "
+            end
+            ov.data = ov.data .. o.ass_outerbrackets ..") \\N"
+            create_keybind(num_entries, function()
+                mp.commandv('script-message-to', 'console', 'type', cmd .. " ")
+                close_overlay()
+            end)
         end
     end
 
+    open_overlay()
+end
+
+function search_options(keyword)
+    local options = mp.get_property_native('options')
+    load_header(keyword, "option")
+
+    local num_entries = 0
+    for _,option in ipairs(options) do
+        if option:find(keyword)
+        or option:find(keyword:lower())
+        or mp.get_property('option-info/'..option..'/choices', ""):find(keyword)
+        or mp.get_property('option-info/'..option..'/choices', ""):find(keyword:lower())
+        then
+            num_entries = num_entries + 1
+
+            local type = mp.get_property('option-info/'..option..'/type', '')
+            local option_type = "  (" .. type ..")"
+
+            local whitespace = 80 - (option:len() + option_type:len())
+            if whitespace < 4 then whitespace = 4 end
+            local default = "#" ..  mp.get_property('option-info/'..option..'/default-value', "")
+            if default == "#" then default = "" end
+            local option_default = string.rep(" ", whitespace) .. default
+
+            local options_spec = ""
+
+            if type == "Choice" then
+                options_spec = fix_chars("          [ " .. mp.get_property("option-info/"..option..'/choices', ""):gsub(",", " , ") .. ' ]')
+            elseif type == "Integer"
+            or type == "ByteSize"
+            or type == "Float"
+            or type == "Aspect"
+            or type == "Double" then
+                options_spec = fix_chars("          [ "..mp.get_property('option-info/'..option..'/min', "").."  -  ".. mp.get_property("option-info/"..option..'/max', "").." ]")
+            end
+
+            if num_entries > o.max_list then break end
+            ov.data = ov.data .. "\n" .. o.ass_options .. option .. o.ass_optionstype .. option_type .. o.ass_optionsdefault .. option_default .. o.ass_optionsspec .. options_spec
+        end
+    end
+    open_overlay()
+end
+
+function search_property(keyword)
+    local properties = mp.get_property_native('property-list', {})
+    load_header(keyword, "property")
+
+    local num_entries = 0
+    for _,property in ipairs(properties) do
+        if property:find(keyword:lower()) then
+            num_entries = num_entries + 1
+
+            if num_entries > o.max_list then break end
+            ov.data = ov.data .. "\n" .. o.ass_properties .. property .. "           " .. o.ass_propertycurrent .. fix_chars(mp.get_property(property, ""))
+        end
+    end
     open_overlay()
 end
 
@@ -232,10 +304,14 @@ mp.register_script_message('search_page/input', function(type, keyword)
     end
 
     local funct
-    if type == "key" then
+    if type == "key$" then
         funct = search_keys
-    elseif type == "cmd" then
+    elseif type == "cmd$" then
         funct = search_commands
+    elseif type == "prop$" then
+        funct = search_property
+    elseif type == "opt$" then
+        funct = search_options
     else
         msg.error("invalid type, must be either 'cmd' or 'key'")
         return
@@ -247,9 +323,17 @@ mp.register_script_message('search_page/input', function(type, keyword)
 end)
 
 mp.add_key_binding('f12','search-keybinds', function()
-    mp.commandv('script-message-to', 'console', 'type', 'script-message search_page/input key ')
+    mp.commandv('script-message-to', 'console', 'type', 'script-message search_page/input key$ ')
 end)
 
 mp.add_key_binding("Ctrl+f12",'search-commands', function()
-    mp.commandv('script-message-to', 'console', 'type', 'script-message search_page/input cmd ')
+    mp.commandv('script-message-to', 'console', 'type', 'script-message search_page/input cmd$ ')
+end)
+
+mp.add_key_binding("Shift+f12", "search-properties", function()
+    mp.commandv('script-message-to', 'console', 'type', 'script-message search_page/input prop$ ')
+end)
+
+mp.add_key_binding("Alt+f12", "search-options", function()
+    mp.commandv('script-message-to', 'console', 'type', 'script-message search_page/input opt$ ')
 end)
