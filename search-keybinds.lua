@@ -11,6 +11,19 @@
 
 local mp = require 'mp'
 local msg = require 'mp.msg'
+local opt = require 'mp.options'
+
+local o = {
+    ass_header = "{\\c&H00ccff>&\\fs40\b900\\q2}",
+    ass_underline = "{\\c&00ccff>&\\fs30\b100}",
+    ass_allresults = "{\\fs20\\q2}",
+    ass_key = "{\\c&Hffccff>&}",
+    ass_section = "{\\c&H00cccc>&}",
+    ass_cmd = "{\\c&Hffff00>&}",
+    ass_comment = "{\\c&H33ff66>&}"
+}
+
+opt.read_options(o, "search_keybinds")
 
 local ov = mp.create_osd_overlay("ass-events")
 ov.hidden = true
@@ -37,7 +50,7 @@ function add_result(key, section, cmd, comment)
     comment = fix_chars(comment)
 
     msg.verbose("key: " .. key .. " section: " .. section .. " cmd: " .. cmd .. " comment: " .. comment)
-    ov.data = ov.data .. "\n" .. "{\\fs20\\c&Hffccff>&\\q2}" .. key .. "{\\c&H00cccc>&}" .. section .. "{\\c&Hffff00>&}" .. cmd .. "{\\c&H33ff66>&}" .. comment
+    ov.data = ov.data .. "\n" .. o.ass_allresults .. o.ass_key .. key .. o.ass_section .. section .. o.ass_cmd .. cmd .. o.ass_comment .. comment
 end
 
 function search_keys(keyword)
@@ -45,8 +58,8 @@ function search_keys(keyword)
 
     keyword = keyword:lower()
 
-    ov.data = "{\\c&H00ccff>&\\fs40\b900\\q2}" ..  "Search results for '" .. keyword .. "'\
-    {\\c&00ccff>&\\fs30\b100}-------------------------------------------------------"
+    ov.data = o.ass_header ..  "Search results for '" .. keyword .. "'\
+    "..o.ass_underline.."-------------------------------------------------------"
 
     for _,keybind in ipairs(keys) do
         if
@@ -64,7 +77,7 @@ function search_keys(keyword)
                 section = "  (" .. keybind.section .. ")"
             end
 
-            local num_spaces = 20 - key:len() + section:len()
+            local num_spaces = 20 - (key:len() + section:len())
             if num_spaces < 4 then num_spaces = 4 end
             cmd = string.rep(" ", num_spaces) .. keybind.cmd
 
