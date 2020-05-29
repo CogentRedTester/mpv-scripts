@@ -3,7 +3,7 @@
     The search is case insensitive, and searches the key name, the command, the input section, and any comments.
     The script sends the filter directly to a lua string match function, so you can use patterns to get more complex filtering
 
-    The command is: script-message search-keybinds
+    The command is: script-binding search-keybinds
 
     One the command is sent the console will open with a pre-entered search command, simply add a query string as the first argument.
     Once the results page is displayed it can be dismissed with esc
@@ -92,6 +92,6 @@ mp.register_script_message('search_keybinds/search', function(keyword)
     search_keys(keyword)
 end)
 
-mp.register_script_message('search-keybinds', function()
+mp.add_key_binding('f12','search-keybinds', function()
     mp.commandv('script-message-to', 'console', 'type', 'script-message search_keybinds/search ')
 end)
