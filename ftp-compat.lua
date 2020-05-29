@@ -49,9 +49,6 @@ end
 
 --runs all of the custom parsing operations for ftp filenames
 function fixFtpPath()
-    if not ftp then return end
-    msg.info('invalid ftp path, attempting to correct')
-
     --converts the path into a valid string
     path = path:gsub([[\]],[[/]])
     path = decodeURI(path)
@@ -64,9 +61,6 @@ function fixFtpPath()
     end
 
     mp.set_property('stream-open-filename', path)
-    
-    --has to run ftp opts again so that it uses the corrected file paths
-    setFTPOpts()
 end
 
 --sets the custom ftp options
@@ -81,10 +75,6 @@ function setFTPOpts()
     mp.set_property('file-local-options/ordered-chapters-files', directory .. '/' .. o.ordered_chapter_playlist)
 end
 
---stores the previous sub so that we can detect infinite file loops caused by a
---completely invalid URL
-local prevSub
-
 --converts the URL of an errored subtitle and tries adding it again
 function parseMessage(event)
     if (not ftp) and (not o.always_check_subs) then return end
@@ -97,13 +87,12 @@ function parseMessage(event)
     if sub:find("s?ftp://") ~= 1 then return end
 
     --modifying the URL
+    local originalSub = sub
     sub = decodeURI(sub)
 
-    --if this sub was the same as the prev, then cancel the function
-    --otherwise this would cause an infinite loop
-    --this is different behaviour from mpv default since you can't add the same file twice in a row
-    --but I don't know of any reason why one would do that, so I'm leaving it like this
-    if (sub == prevSub) then
+    --if this sub was not modified, then cancel the function
+    --otherwise this would cause an infinite loop if the path is actually wrong
+    if (sub == originalSub) then
         msg.verbose('revised sub file was still not valid, cancelling event loop')
         return
     end
@@ -116,11 +105,11 @@ end
 function testFTP()
     msg.verbose('checking for ftp protocol')
     path = mp.get_property('stream-open-filename')
-    prevSub = ""
 
     if path:find("s?ftp://") == 1 then
         msg.info('FTP protocol detected, modifying settings')
         ftp = true
+        fixFtpPath()
         setFTPOpts()
         return
     end
@@ -133,4 +122,3 @@ mp.register_event('log-message', parseMessage)
 
 --testFTP doesn't strictly need to be a hook, but I don't want it to run asynchronously with fixFtpPath
 mp.add_hook('on_load', 50, testFTP)
-mp.add_hook('on_load_fail', 50, fixFtpPath)
