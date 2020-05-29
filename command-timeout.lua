@@ -18,7 +18,7 @@ local utils = require 'mp.utils'
 local opt = require 'mp.options'
 
 local o = {
-    timeout = 5
+    timeout = 5,
 }
 opt.read_options(o, 'command_timeout')
 
@@ -28,7 +28,7 @@ mp.register_script_message('command-timeout', function(...)
     msg.verbose('recieved arguments: ' .. ...)
     local args = {...}
     if #args < 1 then
-        msg.error('not enough arguments, script requires at least 2')
+        msg.error('not enough arguments, script requires at least 1')
     end
 
     local str = ""
