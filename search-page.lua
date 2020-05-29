@@ -50,6 +50,7 @@ local o = {
 opt.read_options(o, "search_page")
 
 local ov = mp.create_osd_overlay("ass-events")
+local osd_display = mp.get_property_number('osd-duration')
 ov.hidden = true
 
 local dynamic_keybindings = {
@@ -104,7 +105,14 @@ end
 --add results to the keybinds page
 function add_result_keybind(key, section, cmd, comment, num_entries)
     create_keybind(num_entries, function()
+        ov.hidden = true
+        ov:update()
         mp.command(cmd)
+
+        mp.add_timeout(osd_display/1000, function()
+            ov.hidden = false
+            ov:update()
+        end)
     end)
 
     key = fix_chars(key)
