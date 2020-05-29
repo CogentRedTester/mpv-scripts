@@ -49,6 +49,9 @@ shuffles the playlist and moves the current file to the start of the playlist
 ## profile-command
 Parses a script-opt and sends it as a command. Allows input commands to be sent via profiles.
 
+## search-keybinds
+Allows in-player searching of set keybindings. Shows and searches the key, command, section, and any comments. Requires a build of mpv with console.lua for dynamic input.
+
 ## show-errors
 Prints error messages onto the OSD
 
