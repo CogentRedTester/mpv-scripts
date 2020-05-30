@@ -49,7 +49,7 @@ shuffles the playlist and moves the current file to the start of the playlist
 ## profile-command
 Parses a script-opt and sends it as a command. Allows input commands to be sent via profiles.
 
-## search-page
+## [search-page](https://github.com/CogentRedTester/mpv-search-page)
 Allows in-player searching of keybinds, commands, properties, and options.
 
 The command page shows the command name and the argument list, as returned by the Lua API. The script can also use the number keys to auto-load any of the first 9 results into the console.lua terminal on the corresponding keypress. Requires a build of mpv with console.lua for dynamic input.
