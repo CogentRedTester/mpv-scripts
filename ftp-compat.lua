@@ -18,6 +18,8 @@ local msg = require 'mp.msg'
 
 --add options using script-opts=ftpopts-option=value
 local o = {
+    force_enable = false,
+
     directory_playlist = 'playlist.pls',
     ordered_chapter_playlist = 'playlist.pls',
 
@@ -106,7 +108,7 @@ function testFTP()
     msg.verbose('checking for ftp protocol')
     path = mp.get_property('stream-open-filename')
 
-    if path:find("s?ftp://") == 1 then
+    if o.force_enable or path:find("s?ftp://") == 1 then
         msg.info('FTP protocol detected, modifying settings')
         ftp = true
         fixFtpPath()
