@@ -62,14 +62,16 @@ local o = {
     --skip coverart files if they are in the playlist
     skip_coverart = false
 }
-
 local mp = require 'mp'
 local utils = require 'mp.utils'
 local msg = require 'mp.msg'
 local opt = require 'mp.options'
+opt.read_options(o, 'coverart')
 
 local names = {}
 local imageExts = {}
+
+o.placeholder = mp.command_native({"expand-path", o.placeholder})
 
 --splits the string into a table on the semicolons
 function create_table(input)
@@ -101,33 +103,15 @@ function processStrings()
     imageExts = create_table(o.imageExts)
 end
 
+processStrings()
+
 --loads a placeholder image as cover art for the file
 function loadPlaceholder()
     if o.placeholder == "" then return end
-    if not (mp.get_property('vid') == "no" and mp.get_property_bool('force-window')) then return end
+    if not ((mp.get_property('vid') == "no" and mp.get_property('options/vid', "") == "auto") and mp.get_property_bool('force-window')) then return end
 
     msg.verbose('file does not have video track, loading placeholder')
-    local placeholder = mp.command_native({"expand-path", o.placeholder})
-    loadCover(placeholder)
-end
-
---checks if the given file matches the cover art requirements
-function isValidCoverart(file)
-    msg.verbose('testing if ' .. file .. ' is valid coverart')
-    local filename, fileext = splitFileName(file)
-
-    if o.imageExts ~= "" and not imageExts[fileext] then
-        msg.debug('"' .. fileext .. '" not in whitelist')
-        return false
-    else
-        msg.debug('"' .. fileext .. '" in whitelist, checking for valid name...')
-    end
-    if o.names == "" or names[filename] then
-        msg.debug('filename valid')
-        return true
-    end
-    msg.debug('filename invalid')
-    return false
+    loadCover(o.placeholder)
 end
 
 --splits filename into a name and extension
@@ -142,6 +126,25 @@ function splitFileName(file)
     local filename = file:sub(0, index - 1)
 
     return filename, fileext
+end
+
+--checks if the given file matches the cover art requirements
+function isValidCoverart(file)
+    msg.verbose('testing if ' .. file .. ' is valid coverart')
+    local filename, fileext = splitFileName(file)
+
+    if o.imageExts ~= "" and not imageExts[fileext] then
+        msg.debug('"' .. fileext .. '" not in whitelist')
+        return false
+    else
+        msg.debug('"' .. fileext .. '" valid, checking for valid name...')
+    end
+    if o.names == "" or names[filename] then
+        msg.debug('filename valid')
+        return true
+    end
+    msg.debug('filename invalid')
+    return false
 end
 
 --loads the coverart
@@ -165,14 +168,14 @@ function addFromDirectory(directory)
     msg.verbose('scanning files in ' .. directory)
 
     --loops through the all the files in the directory to find if any are valid cover art
-    local success = false
+    local success = 0
     for i, file in ipairs(files) do
         --if the name matches one in the whitelist then load it
         if isValidCoverart(file) then
             msg.verbose(file .. ' found in whitelist - adding as extra video track...')
-            success = true
+            success = 1
             loadCover(utils.join_path(directory, file))
-            if not o.load_extra_files then return true end
+            if not o.load_extra_files then return 1 end
         end
     end
     return success
@@ -235,7 +238,7 @@ function checkForCoverart()
     end
     if ((not succeeded) and o.auto_load_from_playlist) or o.load_from_playlist then
         --loads files from playlist
-        msg.info('searching for coverart in current playlist')
+        msg.verbose('searching for coverart in current playlist')
         local pls = mp.get_property_native('playlist')
         
         for i,v in ipairs(pls)do
@@ -252,11 +255,8 @@ function checkForCoverart()
     end
 
     --loads a placeholder image if no covers were found and a window is forced
-    if not succeeded then loadPlaceholder() end
+    if succeeded ~= 1 then loadPlaceholder() end
 end
-
-opt.read_options(o, 'coverart')
-processStrings()
 
 --runs automatically whenever a file is loaded
 mp.register_event('file-loaded', checkForCoverart)
