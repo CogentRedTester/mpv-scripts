@@ -27,7 +27,7 @@ local o = {
     imageExts = 'jpg;jpeg;png;bmp;gif',
 
     --by default it only loads coverart if it detects the file is an audio file
-    --an audio file is one where mpv reports the first stream as being audio
+    --an audio file is one where mpv reports the first stream as being audio or albumart
     always_scan_coverart = false,
 
     --if false stops looking for coverart after finding a single valid file
@@ -66,9 +66,8 @@ local o = {
     decode_urls = false,
 
     --protocols to do percent decoding for
-    --lua patterns are supported, hence it is case sensitive
     --use semicolons to split protocols
-    decode_protocols = "s?ftp"
+    decode_protocols = "ftp;sftp"
 }
 local mp = require 'mp'
 local utils = require 'mp.utils'
@@ -91,16 +90,6 @@ function create_table(input)
     return t
 end
 
---a music file is one where mpv returns an audio stream as the first track
-function is_audio_file()
-    if mp.get_property('track-list/0/type') == "audio" then
-        return true
-    elseif mp.get_property('track-list/0/albumart') == "yes" then
-        return true
-    end
-    return false
-end
-
 --processes the option strings to ensure they work with the script
 function processStrings()
     --sets everything to lowercase to avoid confusion
@@ -110,12 +99,20 @@ function processStrings()
     --splits the strings into tables
     names = create_table(o.names)
     imageExts = create_table(o.imageExts)
-    for str in string.gmatch(o.decode_protocols, "([^;]+)") do
-        table.insert(decodeProtocols, str)
-    end
+    decodeProtocols = create_table(o.decode_protocols)
 end
 
 processStrings()
+
+--a music file is one where mpv returns an audio stream or coverart as the first track
+function is_audio_file()
+    if mp.get_property('track-list/0/type') == "audio" then
+        return true
+    elseif mp.get_property('track-list/0/albumart') == "yes" then
+        return true
+    end
+    return false
+end
 
 --decodes a URL address
 --this piece of code was taken from: https://stackoverflow.com/questions/20405985/lua-decodeuri-luvit/20406960#20406960
@@ -133,14 +130,10 @@ do
 end
 
 --checks if the path uses a protocol that requires encoding
-function needsDocoding(path)
-    msg.debug('checking if protocol requires percent decoding')
-    for _,v in ipairs(decodeProtocols) do
-        if path:find(v) == 1 then
-            return true
-        end
-    end
-    return false
+function needsDecoding(path)
+    local index = path:find(":")
+    local protocol = path:sub(1, index-1)
+    return decodeProtocols[protocol]
 end
 
 --loads a placeholder image as cover art for the file
@@ -187,7 +180,7 @@ end
 
 --loads the coverart
 function loadCover(path)
-    if needsDocoding(path) then
+    if o.decode_urls and needsDecoding(path) then
         msg.debug('decoding URL')
         path = decodeURI(path)
     end
