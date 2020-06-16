@@ -60,7 +60,15 @@ local o = {
     auto_load_from_playlist = true,
 
     --skip coverart files if they are in the playlist
-    skip_coverart = false
+    skip_coverart = false,
+
+    --decode URL percent encoding
+    decode_urls = false,
+
+    --protocols to do percent decoding for
+    --lua patterns are supported, hence it is case sensitive
+    --use semicolons to split protocols
+    decode_protocols = "s?ftp"
 }
 local mp = require 'mp'
 local utils = require 'mp.utils'
@@ -70,6 +78,7 @@ opt.read_options(o, 'coverart')
 
 local names = {}
 local imageExts = {}
+local decodeProtocols = {}
 
 o.placeholder = mp.command_native({"expand-path", o.placeholder})
 
@@ -101,9 +110,38 @@ function processStrings()
     --splits the strings into tables
     names = create_table(o.names)
     imageExts = create_table(o.imageExts)
+    for str in string.gmatch(o.decode_protocols, "([^;]+)") do
+        table.insert(decodeProtocols, str)
+    end
 end
 
 processStrings()
+
+--decodes a URL address
+--this piece of code was taken from: https://stackoverflow.com/questions/20405985/lua-decodeuri-luvit/20406960#20406960
+local decodeURI
+do
+    local char, gsub, tonumber = string.char, string.gsub, tonumber
+    local function _(hex) return char(tonumber(hex, 16)) end
+
+    function decodeURI(s)
+        msg.debug('decoding string: ' .. s)
+        s = gsub(s, '%%(%x%x)', _)
+        msg.debug('returning string: ' .. s)
+        return s
+    end
+end
+
+--checks if the path uses a protocol that requires encoding
+function needsDocoding(path)
+    msg.debug('checking if protocol requires percent decoding')
+    for _,v in ipairs(decodeProtocols) do
+        if path:find(v) == 1 then
+            return true
+        end
+    end
+    return false
+end
 
 --loads a placeholder image as cover art for the file
 function loadPlaceholder()
@@ -149,6 +187,11 @@ end
 
 --loads the coverart
 function loadCover(path)
+    if needsDocoding(path) then
+        msg.debug('decoding URL')
+        path = decodeURI(path)
+    end
+
     --adds the new file to the playing list
     --if there is no video track currently selected then it autoloads track #1
     if mp.get_property_number('vid', 0) == 0 and mp.get_property('options/vid') == "auto" then
