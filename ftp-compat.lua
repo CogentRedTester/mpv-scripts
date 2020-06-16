@@ -25,8 +25,8 @@ local o = {
 
     --if true the script will always check warning messages to see if one is about an ftp sub file
     --if false the script will only keep track of warning messages when already playing an ftp file
-    --essesntially if this is false you can't drag an ftp sub file onto a non ftp video stream
-    always_check_subs = true
+    --essentially if this is false you can't drag an ftp sub file onto a non ftp video stream
+    always_check_subs = false
 }
 
 opt.read_options(o, 'ftp_compat')
@@ -124,3 +124,28 @@ mp.register_event('log-message', parseMessage)
 
 --testFTP doesn't strictly need to be a hook, but I don't want it to run asynchronously with fixFtpPath
 mp.add_hook('on_load', 50, testFTP)
+
+--script messages for loading ftp tracks as external files
+mp.register_script_message('ftp/video-add', function(path, flags)
+    if flags then
+        mp.commandv('video-add', decodeURI(path), flags)
+    else
+        mp.commandv('video-add', decodeURI(path))
+    end
+end)
+
+mp.register_script_message('ftp/audio-add', function(path,flags)
+    if flags then
+        mp.commandv('audio-add', decodeURI(path), flags)
+    else
+        mp.commandv('audio-add', decodeURI(path))
+    end
+end)
+
+mp.register_script_message('ftp/sub-add', function(path,flags)
+    if flags then
+        mp.commandv('sub-add', decodeURI(path), flags)
+    else
+        mp.commandv('sub-add', decodeURI(path))
+    end
+end)
