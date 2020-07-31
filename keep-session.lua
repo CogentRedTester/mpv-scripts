@@ -29,8 +29,12 @@ local o = {
     auto_load = true,
 
     --directory to keep a record of the previous session
-    save_directory = mp.get_property_osd('watch-later-directory', ''),
-    
+    save_directory = mp.get_property('watch-later-directory', ''),
+
+    --name of the file to save the playlist
+    --save it as a .pls file to be able to open directly
+    session_file = "prev-session",
+
     --maintain position in the playlist
     maintain_pos = true,
 }
@@ -42,7 +46,7 @@ end
 
 opt.read_options(o, 'keep_session', function() end)
 
-local save_file = mp.command_native({"expand-path", o.save_directory}) .. '/prev-session'
+local save_file = mp.command_native({"expand-path", o.save_directory}) .. '/' .. o.session_file
 
 --saves the current playlist as a json string
 function save_playlist()
