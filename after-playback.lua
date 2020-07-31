@@ -1,6 +1,12 @@
 --[[
-    Runs the specified action on playback finish using the nircmd command line tool for windows
-    Only runs when playback finished, quitting or otherwise stopping playback will not trigger the command
+    Runs the specified action when mpv shutsdown using the nircmd command line tool for windows
+    
+    By default the command will only be sent if mpv finishes playing the current file before shutting down,
+    this means quitting the player manually will not trigger the action, unless the `always_run_on_shutdown`
+    option is set to yes.
+    
+    This means that you need to set keep-open and loop to `no` for the script to do anything.
+
 
     Commands are set with script messages:
         
@@ -8,7 +14,6 @@
 
     Valid commands are:
         nothing     -   do nothing, the default, and is used to disable prior commands
-        quit        -   quit the player, this is an alternative to keep-open=no (use this if you don't want to close the player and send a shutdown command at the same time)
         lock        -   locks the computer so that it needs a password to reopen
         sleep       -   puts the computer to sleep
         logoff      -   logs the current user off
@@ -21,10 +26,8 @@
         osd         -   displays osd message (when setting the command, not when it is executed) (default)
         no_osd      -   does not display osd message (when setting the command, not when it is executed)
 
-    There is time to disable the shutdown and reboot commands by sending a script message:
-            script-message abort-shutdown
-    This must be sent within 60 seconds of eof being reached. If the player has already closed then the only
-    way to abort is to reopen mpv player and send the message, or to use the command "nircmd abortshutdown" in the terminal
+    There is time to disable the shutdown and reboot commands by sending a command to nircmd directly through cmd/powershell.
+    This must be sent within 60 seconds of the commands being sent. The command is "nircmd abortshutdown"
 
     The default command can be set with script-opts:
         script-opts=afterplayback-default=[command]
@@ -43,9 +46,9 @@ local o = {
 
     --runs the action every time the player shuts down
     --normally actions are only run when playback ends naturally
-    run_on_shutdown = false,
+    always_run_on_shutdown = false,
 
-    --set whether to output status messages to the OSD by default
+    --set whether to output status messages to the OSD
     osd_output = true
 }
 
@@ -108,9 +111,6 @@ function set_action(action, flag)
         commands[2] = "monitor"
         commands[3] = "off"
 
-    elseif action == 'quit' then
-        commands = {"quit"}
-
     elseif action == "nothing" then
         active = false
 
@@ -128,7 +128,6 @@ end
 function run_action()
     if active == false then return end
 
-    osd_message('executing command "' .. current_action .. '"')
     msg.info('executing command "' .. current_action .. '"')
 
     mp.command_native({
@@ -138,49 +137,23 @@ function run_action()
     })
 end
 
---sends the abort command to nircmd to disable the shutdown and reboot commands
-function abort_shutdown()
-    msg.info('sending abort for shutdown and reboot commands')
-    osd_message('aborting shutdown/reboot')
-
-    mp.command_native({
-        name = 'subprocess',
-        playback_only = false,
-        args = {"nircmd", "abortshutdown"}
-    })
-end
-
---runs when the files eof property has changed
---for some reason this is triggered after every seek?
-function eof()
-    local finished = mp.get_property_bool('eof-reached', false)
-    msg.debug('eof = ' .. tostring(finished))
-    
-    if finished then
-        run_action()
-    end
-end
-
 --runs when the file is closed.
 --runs the command if the reason for the close was eof.
 --this is necessary because the eof property is set to nil immediately,
 --so it can't return true for the above function. We don't want to run
 --the action when the user quits themselves, so we need an extra check
 local reason = ""
-function end_file(event)
-    msg.debug('event: ' .. utils.to_string(event))
+function recordEOF(event)
+    if not active then return end;
+    msg.debug('saving reason for end-file: "' .. event.reason .. '"')
+    reason = event.reason
+end
 
-    --since switching files in a playlist seems to send the same reason end-file reason as a file finishing
-    --we can't just execute the command immediately. Therefore we save the latest reason for an end-file event
-    --and wait until the player shutsdown before sending the command
-    if event.event == "end-file" then
-        msg.debug('saving reason for end-file: "' .. event.reason .. '"')
-        reason = event.reason
-        return
-    end
-
+--runs the saved action if the file was closed naturally
+function shutdown()
+    if not active then return end;
     msg.debug('shutting down mpv, testing for shutdown reason')
-    if reason == "eof" or o.run_on_shutdown
+    if reason == "eof" or o.always_run_on_shutdown
     then
         msg.debug('shutdown caused by eof, running action')
         run_action()
@@ -192,11 +165,8 @@ opt.read_options(o, 'afterplayback')
 set_action(o.default)
 msg.verbose('default action after playback is "' .. current_action .. '"')
 
---runs eof functions when status changes
-mp.observe_property('eof-reached', nil, eof)
-mp.register_event('end-file', end_file)
-mp.register_event('shutdown', end_file)
+
+mp.register_event('end-file', recordEOF)
+mp.register_event('shutdown', shutdown)
 
 mp.register_script_message('after-playback', set_action)
-
-mp.register_script_message('abort-shutdown', abort_shutdown)
