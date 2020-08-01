@@ -15,7 +15,7 @@ Full description in file.
 ## command-timeout
 Sends an input command after a specified delay
 
-## coverart
+## [coverart](https://github.com/CogentRedTester/mpv-coverart)
 Automatically scans the directory of the currently loaded file and loads any valid cover art into mpv as additional video tracks.
 Has options for selecting what file names and types are considered valid.
 
