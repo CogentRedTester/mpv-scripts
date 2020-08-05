@@ -1,69 +1,49 @@
 --[=====[
     script to cycle commands with a keybind, accomplished through script messages
     syntax:
-        script-message cycle-commands [[commandline1],[commandline2],[commandline3]]
+        script-message cycle-commands "command1" "command2" "command3"
 
-    The syntax is in the form of a triple nested json array. The top level array corresponds to each cycle, the 2nd level to each command in each cycle,
-    and the bottom level array to each argument in the command.
-    Double quotes must be used for each argument string, and a comma needs to be between each option.
-    Below is an example that sends two commands on the first keypress, and one on the second:
-    
-        script-message cycle-commands [[["show-text","one","1000"],["print-text","two"]],[["show-text","three four"]]]
-    
-    This would, on keypress one, print 'one' to the OSD for 1 second and 'two' to the console, on keypress two 'three four' would be printed to the OSD
+    The syntax of each command is identical to the standard input.conf syntax, but each command must be within
+    a pair of double quotes.
 
-    There are no limits to the number of commands, and the script message can be used as often as one wants, the script stores the current iteration
-    for each unique cycle command, so there should be no overlap unless one binds the exact same command string (including spacing)
+    Commands with mutiword arguments require you to send double quotes just like normal command syntax, however,
+    you will need to escape the quotes with a backslash so that they are sent as part of the string.
+    Semicolons also work exactly like they do normally, so you can easily send multiple commands each cycle.
 
-    String Quoting:
-        The script is designed to be sent strings directly from input.conf without being encapsulated in quotes. By this I mean you shouldn't need to put
-        quotes around the whole input string as long as the below special rules are followed. However, if one does choose to do full quoting
-        then care needs to be taken that all the quotation marks inside the string are properly escaped using a backslash `\`.
+    Here is an example of a standard input.conf entry:
 
-        Full quoting can potentially solve some edge case inputs, so if your command isn't working try this.
-        Example:
-            script-message cycle-commands "[[[\"show-text\",\"one\",\"1000\"],[\"print-text\",\"two\"]],[[\"show-text\",\"three four\"]]]"
+        script-message cycle-commands "show-text one 1000 ; print-text two" "show-text \"three four\""
 
-    Special rules:
-        spaces:     Generally it doesn't matter where you put spaces, the script can handle spaces anywhere in the json string,
-                    however, you need to take into account the following requirement
+    This would, on keypress one, print 'one' to the OSD for 1 second and 'two' to the console,
+    and on keypress two 'three four' would be printed to the OSD.
+    Notice how the quotation marks around 'three four' are escaped using backslashes.
+    All other syntax details should be exactly the same as usual input commands.
 
-        quotes:     Each argument in the command must contain double quotes as part of the string that is sent to the script,
-                    however, if the quotes have whitespace directly outside them, mpv will automatically strip the quotes and send
-                    just the characters inside. In this situatiuon you need to place double quote characters inside the string,
-                    and use a backslash `\` to escape them. Example:
-                        script-message cycle-commands [[["show-text", "\"hello\"" ]],[["show-text","two"]]]
-
-                    Note that does not apply if the whole script message is quoted, as described above.
-
-        special     Some special characters, such as `#`, will require a properly quoted string in order to be sent to the script, for these
-        chars:      characters either the above formatting, or the full quotation method descibed further above is required.
+    There are no limits to the number of commands, and the script message can be used as often as one wants,
+    the script stores the current iteration for each unique cycle command, so there should be no overlap
+    unless one binds the exact same command string (including spacing)
 ]=====]--
 
 
-msg = require 'mp.msg'
-utils = require 'mp.utils'
+local msg = require 'mp.msg'
 
 --keeps track of commands and iterators
-cmd = {}
+local cmd = {}
 
 --[=====[
 
-    the script stores the command in a table of 3D tables
+    the script stores the command in an array of command strings
     the table is in the format:
-        table[full string].table[cycle][command][word]
+        table[full string].table[cycle]
         table[full string].iterator
-
-    examples: cmd['[[["show-text","hello"]],[["show-text","bye"]]]'].str[2][1][2] = 'bye'
-            cmd['[[["show-text","one"],["show-text","two three"]],[["show-text","four"]]]'].str[1][2][2] = 'two three'
 
 ]=====]--
 function main(...)
-    --to make the command syntax easier we will accept multiple substrings
-    --and concatenate them together into the full json string
-    str = ""
+    --to identify the specific cycle we'll concatenate all the strings together to use
+    --as our table key
+    local str = ""
     for _,v in ipairs({...}) do
-        str = str .. " " .. v
+        str = str .. v .. " | "
     end
     msg.debug('recieved: ' .. str)
 
@@ -73,13 +53,7 @@ function main(...)
         cmd[str] = {}
         cmd[str].iterator = 0
         msg.verbose('parsing table for: ' .. str)
-        cmd[str].table = utils.parse_json(str)
-    end
-
-    if cmd[str].table == nil then
-        msg.error('command syntax incorrect for string: ' .. str)
-        msg.info('if you see quotes around the above string then try removing them from input.conf')
-        return
+        cmd[str].table = {...}
     end
 
     --moves the iterator forward
@@ -91,14 +65,11 @@ function main(...)
 
     local i = cmd[str].iterator
 
-    --runs each command in that cycle
-    msg.verbose('sending commands: ' .. utils.format_json(cmd[str].table[i]))
-    for _,command in ipairs(cmd[str].table[i]) do
-        local def, err = mp.command_native(command, true)
-        if def then
-            msg.error(err .. ' for command: ' .. utils.format_json(command))
-        end
-    end
+    --runs each command in the cycle
+    --mp.command shouldrun the commands exactly as if they were entered in
+    --input.conf. This should provide universal support for all input.conf command syntax
+    msg.verbose('sending commands: ' .. cmd[str].table[i])
+    mp.command(cmd[str].table[i])
 end
 
 mp.register_script_message('cycle-commands', main)
