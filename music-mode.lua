@@ -202,4 +202,4 @@ mp.register_script_message('music-mode-lock', lock_script_message)
 --accepts arguments: 'on' 'off' 'toggle'
 mp.register_script_message('show-metadata', show_metadata)
 
-mp.register_event('file-loaded', file_loaded)
+mp.add_hook('on_preloaded', 40, file_loaded)
