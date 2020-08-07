@@ -148,6 +148,7 @@ metadata.hidden = not o.show_metadata
 
 function update_metadata()
     metadata.data = mp.get_property_osd('filtered-metadata')
+    metadata:update()
 end
 
 function enable_metadata()
@@ -179,8 +180,6 @@ end
 
 --runs when the file is loaded, if script is locked it will do nothing
 function file_loaded()
-    update_metadata()
-    metadata:update()
     if o.auto then
         main()
     end
@@ -203,3 +202,4 @@ mp.register_script_message('music-mode-lock', lock_script_message)
 mp.register_script_message('show-metadata', show_metadata)
 
 mp.add_hook('on_preloaded', 40, file_loaded)
+mp.register_event('file-loaded', update_metadata)
