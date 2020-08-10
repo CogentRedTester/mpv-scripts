@@ -202,4 +202,4 @@ mp.register_script_message('music-mode-lock', lock_script_message)
 mp.register_script_message('show-metadata', show_metadata)
 
 mp.add_hook('on_preloaded', 40, file_loaded)
-mp.register_event('file-loaded', update_metadata)
+mp.observe_property('filtered-metadata', 'string', update_metadata)
