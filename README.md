@@ -3,11 +3,7 @@
 ## after-playback
 Sends commands to nircmd (windows only) on playback finish. Commands include sleep, hibernate, shutdown, lock. Full list is in the file
 
-## asx
-Parses .asx playlists. This is very hacky, and practically useless considering how rare asx files are.
-
 ## [change-refresh](https://github.com/CogentRedTester/mpv-changerefresh)
-
 Uses nircmd (windows only) to change the resolution and refresh rate of the monitor to match the playing video.
 Saves the original monitor resolution and reverts changes on exit and when hotkey is pressed.
 Full description in file.
