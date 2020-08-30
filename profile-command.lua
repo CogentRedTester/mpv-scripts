@@ -1,13 +1,20 @@
 --[=====[
     An extremely basic script to allow people to send input command via profiles
 
-    Cannot send the same command multiple times in a row
+    The script reads the string entered into the script-opt list and runs the string as a command.
+    Syntax is exactly the same as in input.conf. The ideal way to set these options inside profiles is to
+    use script-opts append.
 
-    syntax:
-        single command:         ["command","arg1","arg2"]
-        multiple commands:      [["command1","arg"],["command2","arg2"]]
+    Arguments with spaces or special characters require double quote encapsulation.
+    Multiple commands can be sent using a semicolon.
 
-        if you want to include spaces use %20
+    Examples:
+
+        [profile]
+        script-opts-append=profile_command-cmd= show-text "showing this text" 30
+
+        [profile2]
+        script-opts-append=profile_command-cmd= set vid 0 ; show-text "disabling video"
 ]=====]--
 
 local o = {
@@ -15,29 +22,10 @@ local o = {
 }
 
 local opt = require 'mp.options'
-local msg = require 'mp.msg'
-local utils = require 'mp.utils'
-
 opt.read_options(o, 'profile_command', function()
     if o.cmd == "" then return end
-    o.cmd = o.cmd:gsub("%%20", " ")
-    local command = utils.parse_json(o.cmd)
+    mp.command(o.cmd)
 
-    if command == nil then
-        msg.error('invalid command syntax for ' .. o.cmd)
-        return
-    elseif type(command[1]) ~= "table" then
-        local def, error = mp.command_native(command, true)
-        if def then
-            msg.error('Error occurred for command: ' .. utils.to_string(command))
-        end
-        return
-    end
-
-    for i,cmd in ipairs(command) do
-        local def, error = mp.command_native(cmd, true)
-        if def then
-            msg.error('Error occurred for command: ' .. utils.to_string(cmd))
-        end
-    end
+    --resets the property so that the same command can be sent multiple times in a row
+    mp.commandv('change-list', 'script-opts', 'append', 'profile_command-cmd=')
 end)
