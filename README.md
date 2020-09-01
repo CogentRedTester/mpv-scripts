@@ -27,6 +27,9 @@ Automatically applies profiles when the mpv window is moved to a new display
 ## editions-notification
 Prints a message on the OSD if editions are found in the file, and temporarily switches the osd-playing-message to the editions-list property when switching. This makes it easier to tell the number and names while navigating editions.
 
+## [file-browser](https://github.com/CogentRedTester/mpv-file-browser)
+A universal no-dependency file browser that uses mpv's OSD.
+
 ## ftp-compat
 Changes some options when using the ftp protocol for better user experience
 
