@@ -158,7 +158,7 @@ end
 
 function disable_metadata()
     metadata.hidden = true
-    metadata:update()
+    metadata:remove()
 end
 
 --changes visibility of metadata
