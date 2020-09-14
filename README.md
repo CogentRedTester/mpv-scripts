@@ -49,15 +49,9 @@ shuffles the playlist and moves the current file to the start of the playlist
 Parses a script-opt and sends it as a command. Allows input commands to be sent via profiles.
 
 ## [search-page](https://github.com/CogentRedTester/mpv-search-page)
-Allows in-player searching of keybinds, commands, properties, and options.
+Allows in-player searching of keybinds, commands, properties, and options, and displays the results on the OSD.
 
-The command page shows the command name and the argument list, as returned by the Lua API. The script can also use the number keys to auto-load any of the first 9 results into the console.lua terminal on the corresponding keypress. Requires a build of mpv with console.lua for dynamic input.
-
-The keybind page shows and searches the key, command, section, and any comments. Requires a build of mpv with console.lua for dynamic input. Allows the first 9 keybinds to be run directly from the page.
-
-The Properties page searches the property name, and also shows the current property value.
-
-The Options page searches the name, and any choices. It shows the data types, default values, choices (for choice options), and ranges (for numerical options)
+Requires a build of mpv with console.lua for dynamic input.
 
 ## show-errors
 Prints error messages onto the OSD
