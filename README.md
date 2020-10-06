@@ -24,6 +24,9 @@ Cycles through a list of profiles sent via a script message and prints the profi
 ## display-profiles
 Automatically applies profiles when the mpv window is moved to a new display
 
+## [dvd-browser](https://github.com/CogentRedTester/mpv-dvd-browser)
+This script uses the `lsdvd` commandline utility to allow users to view and select titles for DVDs from directly within mpv. The browser is interractive and allows for both playing the selected title, or appending it to the playlist. It is designed to be used stand-alone, or as an addon for file-browser. It also has automatic playlist support for DVDs.
+
 ## editions-notification
 Prints a message on the OSD if editions are found in the file, and temporarily switches the osd-playing-message to the editions-list property when switching. This makes it easier to tell the number and names while navigating editions.
 
