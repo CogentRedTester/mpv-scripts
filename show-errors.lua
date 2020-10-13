@@ -1,3 +1,8 @@
+--[[
+    Experimental script to print error messages to the OSD. Does not work very well.
+    available at: https://github.com/CogentRedTester/mpv-scripts
+]]--
+
 local mp = require 'mp'
 local msg = require 'mp.msg'
 local opt = require 'mp.options'

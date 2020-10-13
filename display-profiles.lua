@@ -1,6 +1,7 @@
 --[[
     A script to automatically apply a profile when mpv is moved onto a new display
     Does not apply any profiles if the mpv window is sitting accross multiple displays.
+    available at: https://github.com/CogentRedTester/mpv-scripts
 
     This script is currently in a very basic form, it only applies profiles based on the names
     that mpv's display-names property returns. It does not necessarily see the actual names of

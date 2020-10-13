@@ -1,5 +1,6 @@
 --[[
     This script dynamically changes some settings at runtime while playing files over the ftp protocol
+    available at: https://github.com/CogentRedTester/mpv-scripts
 
     Settings currently changed:
 
@@ -9,7 +10,7 @@
         - detects when ftp subtitle files are incorrrectly loaded and attempts to re-add them using the corrected filepath
 
         - if a directory is loaded it attempts to open a playlist file inside it (default is playlist.pls)
-        
+
         - ordered chapters are loaded from a playlist file in the source directory (default is playlist.pls)
 ]]--
 

@@ -1,15 +1,16 @@
 --[[
     Runs the specified action when mpv shutsdown using the nircmd command line tool for windows
-    
+    available at: https://github.com/CogentRedTester/mpv-scripts
+
     By default the command will only be sent if mpv finishes playing the current file before shutting down,
     this means quitting the player manually will not trigger the action, unless the `always_run_on_shutdown`
     option is set to yes.
-    
+
     This means that you need to set keep-open and loop to `no` for the script to do anything.
 
 
     Commands are set with script messages:
-        
+
         script-message after-playback [command] {flag}
 
     Valid commands are:
@@ -21,7 +22,7 @@
         displayoff  -   turns off the displays (computer is still running like normal)
         shutdown    -   shuts down computer after 60 seconds
         reboot      -   reboots the computer after 60 seconds
-    
+
     Valid flags are:
         osd         -   displays osd message (when setting the command, not when it is executed) (default)
         no_osd      -   does not display osd message (when setting the command, not when it is executed)
@@ -31,7 +32,7 @@
 
     The default command can be set with script-opts:
         script-opts=afterplayback-default=[command]
-    
+
     See the options table for more options
 ]]--
 

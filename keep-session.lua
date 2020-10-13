@@ -15,6 +15,8 @@
 
     script-message save-session
     script-message reload-session
+
+    available at: https://github.com/CogentRedTester/mpv-scripts
 ]]--
 
 local utils = require 'mp.utils'

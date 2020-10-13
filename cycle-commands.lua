@@ -1,5 +1,7 @@
 --[=====[
     script to cycle commands with a keybind, accomplished through script messages
+    available at: https://github.com/CogentRedTester/mpv-scripts
+
     syntax:
         script-message cycle-commands "command1" "command2" "command3"
 

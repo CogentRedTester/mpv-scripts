@@ -3,6 +3,8 @@
     Uses powershell, so it only works on windows. Though if someone is using the cross-platform
     version of powershell, they may just need to change the first arguement from 'powershell' to 'pwsh'.
 
+    available at: https://github.com/CogentRedTester/mpv-scripts
+
     Also includes script messages to add video/audio/sub tracks from onedrive:
 
     script-message onedrive/video-add [url] {flag}

@@ -1,10 +1,11 @@
 --[[
     a script to modify mpv behaviour to work best with syncplay, currently just handles local playlists
+    available at: https://github.com/CogentRedTester/mpv-scripts
 
     Current features:
 
         - detects when a playlist entry has finished and seeks to time 0:00:00 before skipping to the next playlist entry
-        
+
         - since the loop-playlist option breaks the above this script automatically disables the default loop-playlist behaviour
           and handles playlist looping itself. The behaviour currently replicates the "inf" setting
 

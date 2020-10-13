@@ -1,6 +1,6 @@
 --[[
     Prints a pause icon in the middle of the screen when mpv is paused
-    https://github.com/CogentRedTester/mpv-scripts
+    available at: https://github.com/CogentRedTester/mpv-scripts
 ]]--
 
 local mp = require 'mp'

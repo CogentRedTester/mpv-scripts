@@ -1,5 +1,7 @@
 --[[
     script to cycle profiles with a keybind, accomplished through script messages
+    available at: https://github.com/CogentRedTester/mpv-scripts
+
     syntax:
         script-message cycle-profiles "profile1;profile2;profile3"
 

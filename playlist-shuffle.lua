@@ -1,4 +1,7 @@
---shuffles the playlist and moves the currently playing file to the start of the playlist
+--[[
+    shuffles the playlist and moves the currently playing file to the start of the playlist
+    available at: https://github.com/CogentRedTester/mpv-scripts
+]]--
 
 function main()
     mp.command('playlist-shuffle')

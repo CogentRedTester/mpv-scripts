@@ -1,5 +1,6 @@
 --[=====[
     An extremely basic script to allow people to send input command via profiles
+    available at: https://github.com/CogentRedTester/mpv-scripts
 
     The script reads the string entered into the script-opt list and runs the string as a command.
     Syntax is exactly the same as in input.conf. The ideal way to set these options inside profiles is to

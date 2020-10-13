@@ -1,6 +1,7 @@
 --[[
     This script is designed to allow you to apply a temporary profile,
     the original use case was for tempoarily changing the OSD style on mouse click (for my music mode)
+    available at: https://github.com/CogentRedTester/mpv-scripts
 
     The script is controlled through script messages:
         script-message temp-profile [profile] [undo-profile] [timeout]

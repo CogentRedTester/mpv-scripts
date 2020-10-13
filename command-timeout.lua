@@ -10,6 +10,8 @@
     The command string can have spaces at any point but before/after the square brackets.
     If the same timeout command is sent before the timer runs out, then the
     timer is reset without sending the command.
+
+    available at: https://github.com/CogentRedTester/mpv-scripts
 ]]--
 
 local mp = require 'mp'

@@ -1,5 +1,7 @@
 --[[
-	A simple script which loads a music profile whenever an audio file is played.
+    A simple script which loads a music profile whenever an audio file is played.
+    available at: https://github.com/CogentRedTester/mpv-scripts
+
 	An audio file is a file in which entry 1 in the track list is an audio stream, or albumart
 	There is also an option to set an 'undo' profile for when video files are loaded whilst in music mode
 

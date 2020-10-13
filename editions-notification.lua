@@ -1,5 +1,9 @@
---Shows a notification when the file loads if it has multiple editions
---switches the osd-playing-message to show the list of editions to allow for better edition navigation
+--[[
+    Shows a notification when the file loads if it has multiple editions
+    switches the osd-playing-message to show the list of editions to allow for better edition navigation
+
+    available at: https://github.com/CogentRedTester/mpv-scripts
+]]--
 
 msg = require 'mp.msg'
 
