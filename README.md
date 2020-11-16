@@ -62,6 +62,10 @@ Requires a build of mpv with console.lua for dynamic input.
 ## show-errors
 Prints error messages onto the OSD
 
+## [sub-select](https://github.com/CogentRedTester/mpv-sub-select)
+Allows you to configure advanced subtitle track selection based on
+the current audio track and the names and language of the subtitle tracks.
+
 ## syncplay-compat
 Changes some settings to work well with [Syncplay](https://syncplay.pl/). Currently designed to provide support for local playlists.
 
