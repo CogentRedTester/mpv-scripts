@@ -54,6 +54,9 @@ shuffles the playlist and moves the current file to the start of the playlist
 ## profile-command
 Parses a script-opt and sends it as a command. Allows input commands to be sent via profiles.
 
+## [scroll-list](https://github.com/CogentRedTester/mpv-scroll-list)
+A lua module to easily allow the creation of interactive scrollable lists.
+
 ## [search-page](https://github.com/CogentRedTester/mpv-search-page)
 Allows in-player searching of keybinds, commands, properties, and options, and displays the results on the OSD.
 
