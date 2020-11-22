@@ -45,6 +45,9 @@ Switches to a music profile when an audio file is being played and switches back
 ## onedrive-hook
 Automatically converts a onedrive share link into a direct path which mpv can play, Windows only.
 
+## ordered-chapters-playlist
+A script to point the player towards an ordered chapters playlist for devices which don't have direct access to their file systems.
+
 ## pause-indicator
 Prints a pause icon in the middle of the screen when mpv is paused
 
