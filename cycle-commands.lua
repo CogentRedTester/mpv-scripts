@@ -26,7 +26,7 @@
     unless one binds the exact same command string (including spacing)
 ]=====]--
 
-
+local mp = require 'mp'
 local msg = require 'mp.msg'
 
 --keeps track of commands and iterators
@@ -40,7 +40,7 @@ local cmd = {}
         table[full string].iterator
 
 ]=====]--
-function main(...)
+local function main(...)
     --to identify the specific cycle we'll concatenate all the strings together to use
     --as our table key
     local str = ""
@@ -70,7 +70,7 @@ function main(...)
     --runs each command in the cycle
     --mp.command shouldrun the commands exactly as if they were entered in
     --input.conf. This should provide universal support for all input.conf command syntax
-    msg.verbose('sending commands: ' .. cmd[str].table[i])
+    msg.verbose('sending command: ' .. cmd[str].table[i])
     mp.command(cmd[str].table[i])
 end
 
