@@ -10,10 +10,9 @@
         - detects when ftp subtitle files are incorrrectly loaded and attempts to re-add them using the corrected filepath
 
         - if a directory is loaded it attempts to open a playlist file inside it (default is playlist.pls)
-
-        - ordered chapters are loaded from a playlist file in the source directory (default is playlist.pls)
 ]]--
 
+local mp = require 'mp'
 local opt = require 'mp.options'
 local msg = require 'mp.msg'
 
@@ -22,7 +21,6 @@ local o = {
     force_enable = false,
 
     directory_playlist = 'playlist.pls',
-    ordered_chapter_playlist = 'playlist.pls',
 
     --if true the script will always check warning messages to see if one is about an ftp sub file
     --if false the script will only keep track of warning messages when already playing an ftp file
@@ -51,7 +49,7 @@ do
 end
 
 --runs all of the custom parsing operations for ftp filenames
-function fixFtpPath()
+local function fixFtpPath()
     --converts the path into a valid string
     path = path:gsub([[\]],[[/]])
     path = decodeURI(path)
@@ -66,27 +64,15 @@ function fixFtpPath()
     mp.set_property('stream-open-filename', path)
 end
 
---sets the custom ftp options
---only applies to the specific file loaded
---since this function needs to be rerun for every ftp file anyway,
---this doesn't decrease performance
-function setFTPOpts()
-    msg.verbose('setting custom options for ' .. path)
-    local directory = path:sub(1, path:find("/[^/]*$"))
-
-    --sets ordered chapters to use a playlist file inside the directory
-    mp.set_property('file-local-options/ordered-chapters-files', directory .. '/' .. o.ordered_chapter_playlist)
-end
-
 --converts the URL of an errored subtitle and tries adding it again
-function parseMessage(event)
+local function parseMessage(event)
     if (not ftp) and (not o.always_check_subs) then return end
 
     local error = event.text
     if not error:find("Can not open external file ") then return end
 
     --isolating the file that was added
-    sub = error:sub(28, -3)
+    local sub = error:sub(28, -3)
     if sub:find("s?ftp://") ~= 1 then return end
 
     --modifying the URL
@@ -101,11 +87,10 @@ function parseMessage(event)
     end
     msg.info('attempting to add revised file address')
     mp.commandv('sub-add', sub)
-    prevSub = sub
 end
 
 --tests if the file being opened uses the ftp protocol to set custom settings
-function testFTP()
+local function testFTP()
     msg.verbose('checking for ftp protocol')
     path = mp.get_property('stream-open-filename')
 
@@ -113,7 +98,6 @@ function testFTP()
         msg.info('FTP protocol detected, modifying settings')
         ftp = true
         fixFtpPath()
-        setFTPOpts()
         return
     end
     ftp = false
