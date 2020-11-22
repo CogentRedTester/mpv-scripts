@@ -7,6 +7,8 @@
     relative paths in order to work across file systems.
 
     The `playlist_name` variable can be changed to modify what the name of the playlist file should be.
+
+    available at: https://github.com/CogentRedTester/mpv-scripts
 ]]--
 
 local playlist_name = "playlist.pls"
