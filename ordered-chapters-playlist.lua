@@ -11,7 +11,7 @@
     available at: https://github.com/CogentRedTester/mpv-scripts
 ]]--
 
-local playlist_name = "playlist.pls"
+local playlist_name = ".ordered-chapters.m3u"
 
 local mp = require 'mp'
 local utils = require 'mp.utils'
