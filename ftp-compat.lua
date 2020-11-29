@@ -7,8 +7,6 @@
         - converts filepaths taken directly from a browser into a string format readable by mpv
             -e.g. "ftp://test%20ing" would become "ftp://test ing"
 
-        - detects when ftp subtitle files are incorrrectly loaded and attempts to re-add them using the corrected filepath
-
         - if a directory is loaded it attempts to open a playlist file inside it (default is playlist.pls)
 ]]--
 
@@ -20,17 +18,11 @@ local msg = require 'mp.msg'
 local o = {
     force_enable = false,
 
-    directory_playlist = 'playlist.pls',
-
-    --if true the script will always check warning messages to see if one is about an ftp sub file
-    --if false the script will only keep track of warning messages when already playing an ftp file
-    --essentially if this is false you can't drag an ftp sub file onto a non ftp video stream
-    always_check_subs = false
+    directory_playlist = '.folder.m3u',
 }
 
 opt.read_options(o, 'ftp_compat')
 
-local ftp = false
 local path
 
 --decodes a URL address
@@ -64,31 +56,6 @@ local function fixFtpPath()
     mp.set_property('stream-open-filename', path)
 end
 
---converts the URL of an errored subtitle and tries adding it again
-local function parseMessage(event)
-    if (not ftp) and (not o.always_check_subs) then return end
-
-    local error = event.text
-    if not error:find("Can not open external file ") then return end
-
-    --isolating the file that was added
-    local sub = error:sub(28, -3)
-    if sub:find("s?ftp://") ~= 1 then return end
-
-    --modifying the URL
-    local originalSub = sub
-    sub = decodeURI(sub)
-
-    --if this sub was not modified, then cancel the function
-    --otherwise this would cause an infinite loop if the path is actually wrong
-    if (sub == originalSub) then
-        msg.verbose('revised sub file was still not valid, cancelling event loop')
-        return
-    end
-    msg.info('attempting to add revised file address')
-    mp.commandv('sub-add', sub)
-end
-
 --tests if the file being opened uses the ftp protocol to set custom settings
 local function testFTP()
     msg.verbose('checking for ftp protocol')
@@ -96,19 +63,13 @@ local function testFTP()
 
     if o.force_enable or path:find("s?ftp://") == 1 then
         msg.info('FTP protocol detected, modifying settings')
-        ftp = true
         fixFtpPath()
         return
     end
-    ftp = false
 end
 
---scans warning messages to tell if a subtitle track was incorrectly added
-mp.enable_messages('error')
-mp.register_event('log-message', parseMessage)
-
 --testFTP doesn't strictly need to be a hook, but I don't want it to run asynchronously with fixFtpPath
-mp.add_hook('on_load', 50, testFTP)
+mp.add_hook('on_load_fail', 50, testFTP)
 
 --script messages for loading ftp tracks as external files
 mp.register_script_message('ftp/video-add', function(path, flags)
