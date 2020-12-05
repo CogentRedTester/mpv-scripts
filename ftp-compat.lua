@@ -64,7 +64,6 @@ local function testFTP()
     if o.force_enable or path:find("s?ftp://") == 1 then
         msg.info('FTP protocol detected, modifying settings')
         fixFtpPath()
-        return
     end
 end
 
