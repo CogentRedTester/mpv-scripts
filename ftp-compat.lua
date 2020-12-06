@@ -47,10 +47,9 @@ local function fixFtpPath()
     path = decodeURI(path)
 
     --if there is no period in the filename then the file is actually a directory
-    local filename = path:sub(path:find("/[^/]*$") + 1)
-    if not filename:find('%.') then
+    if not path:match("/[^/]+$") then
         msg.info('directory loaded, attempting to load playlist file')
-        path = path .. "/" .. o.directory_playlist
+        path = path .. o.directory_playlist
     end
 
     mp.set_property('stream-open-filename', path)
