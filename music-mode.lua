@@ -16,11 +16,12 @@
 	Names and argument options are at the bottom of this script file.
 ]]--
 
+local mp = require 'mp'
 local msg = require 'mp.msg'
 local opt = require 'mp.options'
 
 --script options, set these in script-opts
-o = {
+local o = {
     --change to disable automatic mode switching
     auto = true,
 
@@ -59,114 +60,26 @@ local function is_audio_file()
     return has_audio
 end
 
---to prevent superfluous loading of profiles the script keeps track of when music mode is enabled
-local musicMode = false
-
---enables music mode
-function activate()
-    mp.commandv('apply-profile', o.profile)
-    mp.commandv('enable-section', o.input_section, "allow-vo-dragging+allow-hide-cursor")
-    mp.osd_message('Music Mode enabled')
-
-    if o.show_metadata then
-        show_metadata("on")
-    end
-
-    musicMode = true
-end
-
---disables music mode
-function deactivate()
-    mp.commandv('apply-profile', o.undo_profile)
-    mp.commandv('disable-section', o.input_section)
-    mp.osd_message('Music Mode disabled')
-
-    if o.show_metadata then
-        show_metadata('off')
-    end
-
-    musicMode = false
-end
-
-function main()
-    --if the file is an audio file then the music profile is loaded
-    if is_audio_file() then
-        msg.verbose('audio file, applying profile "' .. o.profile .. '"')
-        if not musicMode then
-            activate()
-        end
-    elseif o.undo_profile ~= "" and musicMode then
-        msg.verbose('video file, applying undo profile "' .. o.undo_profile .. '"')
-        deactivate()
-    end
-end
-
---sets music mode from script-message
-function script_message(command)
-    if command == "on" or command == nil then
-        activate()
-    elseif command == "off" then
-        deactivate()
-    elseif command == "toggle" then
-        if musicMode then
-            deactivate()
-        else
-            activate()
-        end
-    else
-        msg.warn('unknown command "' .. command .. '"')
-    end
-end
-
-function lock()
-    o.auto = false
-    msg.info('Music Mode locked')
-    mp.osd_message('Music Mode locked')
-end
-
-function unLock()
-    o.auto = true
-    msg.info('Music Mode unlocked')
-    mp.osd_message('Music Mode unlocked')
-end
-
---toggles lock
-function lock_script_message(command)
-    if command == "on" or command == nil then
-        lock()
-    elseif command == "off" then
-        unLock()
-    elseif command == "toggle" then
-        if o.auto then
-            lock()
-        else
-            unLock()
-        end
-    else
-        msg.warn('unknown command "' .. command .. '"')
-    end
-end
-
 local metadata = mp.create_osd_overlay('ass-events')
 metadata.hidden = not o.show_metadata
 
-function update_metadata()
+local function update_metadata()
     metadata.data = mp.get_property_osd('filtered-metadata')
     metadata:update()
 end
 
-function enable_metadata()
+local function enable_metadata()
     metadata.hidden = false
     metadata:update()
 end
 
-function disable_metadata()
+local function disable_metadata()
     metadata.hidden = true
     metadata:remove()
 end
 
 --changes visibility of metadata
-function show_metadata(command)
+local function show_metadata(command)
     if command == "on" or command == nil then
         enable_metadata()
     elseif command == "off" then
@@ -182,8 +95,96 @@ function show_metadata(command)
     end
 end
 
+--to prevent superfluous loading of profiles the script keeps track of when music mode is enabled
+local musicMode = false
+
+--enables music mode
+local function activate()
+    mp.commandv('apply-profile', o.profile)
+    mp.commandv('enable-section', o.input_section, "allow-vo-dragging+allow-hide-cursor")
+    mp.osd_message('Music Mode enabled')
+
+    if o.show_metadata then
+        show_metadata("on")
+    end
+
+    musicMode = true
+end
+
+--disables music mode
+local function deactivate()
+    mp.commandv('apply-profile', o.undo_profile)
+    mp.commandv('disable-section', o.input_section)
+    mp.osd_message('Music Mode disabled')
+
+    if o.show_metadata then
+        show_metadata('off')
+    end
+
+    musicMode = false
+end
+
+local function main()
+    --if the file is an audio file then the music profile is loaded
+    if is_audio_file() then
+        msg.verbose('audio file, applying profile "' .. o.profile .. '"')
+        if not musicMode then
+            activate()
+        end
+    elseif o.undo_profile ~= "" and musicMode then
+        msg.verbose('video file, applying undo profile "' .. o.undo_profile .. '"')
+        deactivate()
+    end
+end
+
+--sets music mode from script-message
+local function script_message(command)
+    if command == "on" or command == nil then
+        activate()
+    elseif command == "off" then
+        deactivate()
+    elseif command == "toggle" then
+        if musicMode then
+            deactivate()
+        else
+            activate()
+        end
+    else
+        msg.warn('unknown command "' .. command .. '"')
+    end
+end
+
+local function lock()
+    o.auto = false
+    msg.info('Music Mode locked')
+    mp.osd_message('Music Mode locked')
+end
+
+local function unLock()
+    o.auto = true
+    msg.info('Music Mode unlocked')
+    mp.osd_message('Music Mode unlocked')
+end
+
+--toggles lock
+local function lock_script_message(command)
+    if command == "on" or command == nil then
+        lock()
+    elseif command == "off" then
+        unLock()
+    elseif command == "toggle" then
+        if o.auto then
+            lock()
+        else
+            unLock()
+        end
+    else
+        msg.warn('unknown command "' .. command .. '"')
+    end
+end
+
 --runs when the file is loaded, if script is locked it will do nothing
-function file_loaded()
+local function file_loaded()
     if o.auto then
         main()
     end
