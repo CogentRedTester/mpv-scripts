@@ -2,7 +2,7 @@
     A simple script which loads a music profile whenever an audio file is played.
     available at: https://github.com/CogentRedTester/mpv-scripts
 
-	An audio file is a file in which entry 1 in the track list is an audio stream, or albumart
+	An audio file is a file with audio streams and no video streams above 1 fps
 	There is also an option to set an 'undo' profile for when video files are loaded whilst in music mode
 
 	Profiles are only ever applied when switching between audio or video files, so you can change
@@ -47,14 +47,16 @@ o = {
 
 opt.read_options(o, 'musicmode', function() msg.verbose('options updated') end)
 
---a music file is one where mpv returns an audio stream as the first track
-function is_audio_file()
-    if mp.get_property('track-list/0/type') == "audio" then
-        return true
-    elseif mp.get_property('track-list/0/albumart') == "yes" then
-        return true
+--a music file is one where mpv returns an audio stream or coverart as the first track
+local function is_audio_file()
+    local track_list = mp.get_property_native("track-list")
+
+    local has_audio = false
+    for _, track in ipairs(track_list) do
+        if track.type == "audio" then has_audio = true
+        elseif not track.albumart and (track["demux-fps"] or 0) > 1 then return false end
     end
-    return false
+    return has_audio
 end
 
 --to prevent superfluous loading of profiles the script keeps track of when music mode is enabled
