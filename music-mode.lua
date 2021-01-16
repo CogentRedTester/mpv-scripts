@@ -55,7 +55,7 @@ local function is_audio_file()
     local has_audio = false
     for _, track in ipairs(track_list) do
         if track.type == "audio" then has_audio = true
-        elseif not track.albumart and (track["demux-fps"] or 0) > 1 then return false end
+        elseif not track.albumart and (track["demux-fps"] or 2) > 1 then return false end
     end
     return has_audio
 end
