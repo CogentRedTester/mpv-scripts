@@ -36,34 +36,26 @@ local iterators = {}
 local function main(...)
     local commands = {...}
 
-    --to identify the specific cycle we'll concatenate all the strings together to use
-    --as our table key
+    --to identify the specific cycle we'll concatenate all the strings together to use as our table key
     local str = ""
     for _,v in ipairs(commands) do
-        str = str .. v .. " | "
+        str = str..'['..v..'] '
     end
-    msg.debug('recieved: ' .. str)
+    msg.trace('recieved: ' .. str)
 
-    --if there is no iterator saved for the current string, then creates a new one
     if iterators[str] == nil then
-        msg.verbose('unknown cycle, creating iterator')
-        iterators[str]= 0
-    end
-
-    --moves the iterator forward
-    iterators[str] = iterators[str] + 1
-    if iterators[str] > #commands then
-        msg.verbose('reached end of cycle, wrapping back to start')
+        msg.debug('unknown cycle, creating iterator')
         iterators[str] = 1
+    else
+        iterators[str] = iterators[str] + 1
+        if iterators[str] > #commands then iterators[str] = 1 end
     end
 
-    local i = iterators[str]
-
-    --runs each command in the cycle
     --mp.command should run the commands exactly as if they were entered in input.conf.
     --This should provide universal support for all input.conf command syntax
-    msg.verbose('sending command: ' .. commands[i])
-    mp.command(commands[i])
+    local cmd = commands[ iterators[str] ]
+    msg.verbose('sending command: ' .. cmd)
+    mp.command(cmd)
 end
 
 mp.register_script_message('cycle-commands', main)
