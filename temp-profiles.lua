@@ -17,50 +17,58 @@ local o = {
     timeout = 2,
 }
 
+local mp = require 'mp'
 local opt = require 'mp.options'
 local msg = require 'mp.msg'
 
-local t = {}
+local timers = {}
+local active_timers = {}
 
 opt.read_options(o, 'temp_profiles')
 
 --specific profile commands are stored in a table with the following structure:
---t[profile] = {undo = 'undo_profile', timer = mp.add_timeout('timeout')}
-function apply_profile(profile, undo_profile, timeout)
+--t[profile] = {undo = 'undo_profile', timer = mp.add_timeout('timeout'), undo_funct = function()...end}
+local function apply_profile(profile, undo_profile, timeout)
     msg.debug('recieved input')
     if timeout == nil then timeout = o.timeout end
     if undo_profile == nil then undo_profile = "" end
-    if t[profile] == nil then t[profile] = {} end
-    t[profile].undo = undo_profile
+    if timers[profile] == nil then timers[profile] = {} end
+    local p = timers[profile]
+    p.undo = undo_profile
 
-    if t[profile].timer == nil then
-        t[profile].timer = mp.add_timeout(timeout, function()
-            msg.verbose('applying undo profile ' .. t[profile].undo)
-            mp.commandv('apply-profile', t[profile].undo)
-            t[profile].timer:kill()
-        end)
-    elseif t[profile].timer:is_enabled() then
-        t[profile].timer.timeout = timeout
-        t[profile].timer:kill()
-        t[profile].timer:resume()
+    if p.timer == nil then
+        p.undo_funct = function()
+            msg.verbose('applying undo profile ' .. p.undo)
+            mp.commandv('apply-profile', p.undo)
+            p.timer:kill()
+            active_timers[profile] = nil
+        end
+        p.timer = mp.add_timeout(timeout, p.undo_funct)
+
+    elseif p.timer:is_enabled() then
+        p.timer.timeout = timeout
+        p.timer:kill()
+        p.timer:resume()
         return
     end
+
     msg.verbose('applying profile: ' .. profile)
     mp.commandv('apply-profile', profile)
-    t[profile].timer.timeout = timeout
-    t[profile].timer:resume()
-end
-
-function undo_profile(profile)
-    msg.verbose('applying undo profile ' .. t[profile].undo)
-    mp.commandv('apply-profile', t[profile].undo)
-    t[profile].timer:kill()
+    p.timer.timeout = timeout
+    p.timer:resume()
+    active_timers[profile] = p
 end
 
 mp.register_script_message('temp-profile', apply_profile)
 
+--undoes all of the profiles when the file ends
 mp.add_hook('on_unload', 50, function()
-    for profile, timer in pairs(t) do
-        undo_profile(profile)
+    for _, profile in pairs(active_timers) do
+        if profile.timer:is_enabled() then
+            profile.undo_funct()
+        end
     end
 end)
+
+--this is to drain property changes before the next file starts
+mp.add_hook('on_after_end_file', 50, function() end)
