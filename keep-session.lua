@@ -19,6 +19,7 @@
     available at: https://github.com/CogentRedTester/mpv-scripts
 ]]--
 
+local mp = require 'mp'
 local utils = require 'mp.utils'
 local opt = require 'mp.options'
 local msg = require 'mp.msg'
@@ -51,7 +52,7 @@ opt.read_options(o, 'keep_session', function() end)
 local save_file = mp.command_native({"expand-path", o.save_directory}) .. '/' .. o.session_file
 
 --saves the current playlist as a json string
-function save_playlist()
+local function save_playlist()
     msg.verbose('saving current session')
 
     local playlist = mp.get_property_native('playlist')
@@ -66,12 +67,12 @@ function save_playlist()
     session:write(mp.get_property('playlist-pos') .. "\n")
 
     local working_directory = mp.get_property('working-directory')
-    for i, v in ipairs(playlist) do
+    for _, v in ipairs(playlist) do
         msg.debug('adding ' .. v.filename .. ' to playlist')
 
         --if the file is available then it attempts to expand the path in-case of relative playlists
-        --presumably if the file contains a :// then it's a network stream, so we shouldn't try to expand the path
-        if not (v.filename:find("://")) or (v.filename:find("file://") == 1) then
+        --presumably if the file contains a protocol then it shouldn't be expanded
+        if not v.filename:find("^%a*://") then
             v.filename = utils.join_path(working_directory, v.filename)
             msg.debug('expanded path: ' .. v.filename)
         end
@@ -82,7 +83,7 @@ function save_playlist()
 end
 
 --turns the previous json string into a table and adds all the files to the playlist
-function load_prev_session(auto_load)
+local function load_prev_session()
     --loads the previous session file
     msg.verbose('loading previous session')
     local session = io.open(save_file, "r+")
@@ -91,9 +92,6 @@ function load_prev_session(auto_load)
     --or if someone manually deletes the previous session file
     if session == nil or session:read() ~= "[playlist]" then
         msg.verbose('no previous session, cancelling load')
-        if auto_load then
-            mp.unregister_event('load_prev_session')
-        end
         return
     end
 
@@ -102,24 +100,16 @@ function load_prev_session(auto_load)
     if o.maintain_pos then
         previous_playlist_pos = session:read()
         pl_start = mp.get_property('playlist-start')
-        if previous_playlist_pos ~= pl_start then
-            mp.set_property('playlist-start', previous_playlist_pos)
-        end
+        mp.set_property('playlist-start', previous_playlist_pos)
     end
-    
-    session:close()
-    mp.commandv('loadlist', save_file)
 
-    --removes the event if loaded automatically
-    --changing the playlist-start command back immediately doesn't seem to work when auto is enabled
-    if auto_load then
-        mp.unregister_event('load_prev_session')
-    else
-        mp.set_property('playlist-start', pl_start)
-    end
+    session:close()
+    msg.verbose(mp.get_property('playlist-start'))
+    mp.commandv('loadlist', save_file)
+    mp.set_property('playlist-start', pl_start)
 end
 
-function shutdown()
+local function shutdown()
     if o.auto_save then
         save_playlist()
     end
@@ -129,17 +119,13 @@ mp.register_script_message('save-session', save_playlist)
 mp.register_script_message('reload-session', load_prev_session)
 mp.register_event('shutdown', shutdown)
 
---I'm not sure if it's possible for the player to be in idle on startup with items in the playlist
---but I'm doing this to be safe
-if (mp.get_property_number('playlist-count', 0) == 0) then
-    if o.auto_load then
-        local pl_start = mp.get_property('playlist-start')
-        function reset_setting()
-            mp.set_property('playlist-start', pl_start)
-            mp.unregister_event(reset_setting)
-        end
-
-        mp.register_event('start-file', load_prev_session(true))
-        mp.register_event('file-loaded', reset_setting)
+--Load the previous session if auto_load is enabled and the playlist is empty
+--the function is not called until the first property observation is triggered to let everything initialise
+--otherwise modifying playlist-start becomes unreliable
+if o.auto_load and (mp.get_property_number('playlist-count', 0) == 0) then
+    local function temp()
+        load_prev_session()
+        mp.unobserve_property(temp)
     end
+    mp.observe_property("idle", "string", temp)
 end
