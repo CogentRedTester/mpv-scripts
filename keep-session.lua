@@ -104,9 +104,8 @@ local function load_prev_session()
     end
 
     session:close()
-    msg.verbose(mp.get_property('playlist-start'))
     mp.commandv('loadlist', save_file)
-    mp.set_property('playlist-start', pl_start)
+    if o.maintain_pos then mp.set_property('playlist-start', pl_start) end
 end
 
 local function shutdown()
