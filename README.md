@@ -57,6 +57,13 @@ shuffles the playlist and moves the current file to the start of the playlist
 ## profile-command
 Parses a script-opt and sends it as a command. Allows input commands to be sent via profiles.
 
+## save-playlist
+A script for saving m3u playlists based on mpvs current internal playlist.
+Users can set the name and directory to save the file in the initial script message,
+or can enter custom strings in the osd.
+
+This script requires [mpv-user-input](#user-input).
+
 ## [scroll-list](https://github.com/CogentRedTester/mpv-scroll-list)
 A lua module to easily allow the creation of interactive scrollable lists.
 
