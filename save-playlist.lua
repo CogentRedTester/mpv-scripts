@@ -25,11 +25,12 @@ local mp = require "mp"
 local msg = require "mp.msg"
 local utils = require "mp.utils"
 
-local input = dofile(mp.command_native({"expand-path", "~~/scripts/user-input-moduleee.lua"}))
+local input = dofile(mp.command_native({"expand-path", "~~/scripts/user-input-module.lua"}))
 local working = mp.get_property("working-directory", "")
 
 local function save_playlist(directory, name, relative)
     if not directory or not name then return end
+    directory = mp.command_native({"expand-path", directory})
     local path = directory.."/"..name..".m3u"
     local file = io.open(path, "w")
     if not file then msg.error("could not open file '"..path.."' for writing") ; return end
@@ -49,8 +50,11 @@ local function save_playlist(directory, name, relative)
             end
         end
 
+        msg.verbose("wrote", '"'..path..'"', "to playlist")
         file:write(path.."\n")
     end
+    msg.info("Saved", #playlist, "files to", '"'..directory..'"')
+    mp.osd_message("Saved "..(#playlist).." files to playlist")
     file:close()
 end
 
