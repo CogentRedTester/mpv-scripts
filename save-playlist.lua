@@ -5,7 +5,7 @@
     Available at: https://github.com/CogentRedTester/mpv-scripts
 
     To support requesting user input this script requires that the script mpv-user-input be
-    loaded by mpv, and that the user-input-module.lua file is in the ~~/script directory.
+    loaded by mpv in the ~~/scripts directory, and that user-input-module is in the ~~/script-modules directory.
     mpv-user-input is available here: https://github.com/CogentRedTester/mpv-user-input
 
     Syntax:
@@ -25,7 +25,7 @@ local mp = require "mp"
 local msg = require "mp.msg"
 local utils = require "mp.utils"
 
-local input = dofile(mp.command_native({"expand-path", "~~/scripts/user-input-module.lua"}))
+local input = dofile(mp.command_native({"expand-path", "~~/script-modules/user-input-module.lua"}))
 local working = mp.get_property("working-directory", "")
 
 local function save_playlist(directory, name, relative)
