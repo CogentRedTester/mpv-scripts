@@ -52,7 +52,9 @@ opt.read_options(o, 'keep_session', function() end)
 local save_file = mp.command_native({"expand-path", o.save_directory}) .. '/' .. o.session_file
 
 --saves the current playlist as a json string
-local function save_playlist()
+local function save_playlist(file)
+    if not file then file = save_file
+    else file = file.."/prev-session" end
     msg.verbose('saving current session')
 
     local playlist = mp.get_property_native('playlist')
@@ -62,7 +64,7 @@ local function save_playlist()
         return
     end
 
-    local session = io.open(save_file, 'w')
+    local session = io.open(file, 'w')
     session:write("[playlist]\n")
     session:write(mp.get_property('playlist-pos') .. "\n")
 
@@ -83,10 +85,13 @@ local function save_playlist()
 end
 
 --turns the previous json string into a table and adds all the files to the playlist
-local function load_prev_session()
+local function load_prev_session(file)
+    if not file then file = save_file
+    else file = file.."prev-session" end
+
     --loads the previous session file
     msg.verbose('loading previous session')
-    local session = io.open(save_file, "r+")
+    local session = io.open(file, "r+")
 
     --this should only occur when loading the script for the first time,
     --or if someone manually deletes the previous session file
@@ -104,7 +109,7 @@ local function load_prev_session()
     end
 
     session:close()
-    mp.commandv('loadlist', save_file)
+    mp.commandv('loadlist', file)
     if o.maintain_pos then mp.set_property('playlist-start', pl_start) end
 end
 
@@ -123,7 +128,7 @@ mp.register_event('shutdown', shutdown)
 --otherwise modifying playlist-start becomes unreliable
 if o.auto_load and (mp.get_property_number('playlist-count', 0) == 0) then
     local function temp()
-        load_prev_session()
+        load_prev_session(save_file)
         mp.unobserve_property(temp)
     end
     mp.observe_property("idle", "string", temp)
