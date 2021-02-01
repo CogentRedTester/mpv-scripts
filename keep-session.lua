@@ -87,7 +87,7 @@ end
 --turns the previous json string into a table and adds all the files to the playlist
 local function load_prev_session(file)
     if not file then file = save_file
-    else file = file.."prev-session" end
+    else file = file.."/prev-session" end
 
     --loads the previous session file
     msg.verbose('loading previous session')
