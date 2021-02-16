@@ -88,3 +88,8 @@ Allows you to apply a profile with a timeout, after which another profile is cal
 ## [user-input](https://github.com/CogentRedTester/mpv-user-input)
 An API to allow scripts to request text input from the user over the OSD.
 The script is built around a modified version of mpv's console.lua, so supports almost all the same keybinds.
+
+## youtube-search
+
+A script that allows users to search and open youtube results from within mpv.
+Requires [scroll-list](#scroll-list), [user-input](#user-input), curl, and a youtube API key.
