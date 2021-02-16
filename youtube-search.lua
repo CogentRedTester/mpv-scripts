@@ -128,6 +128,7 @@ local function search(query)
 end
 
 local function play_result(flag)
+    if not list[list.selected] then return end
     mp.commandv("loadfile", list[list.selected].url, flag)
     if flag == "replace" then list:close() end
 end
