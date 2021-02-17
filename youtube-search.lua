@@ -129,12 +129,15 @@ end
 
 local function play_result(flag)
     if not list[list.selected] then return end
+    if flag == "new_window" then mp.commandv("run", "mpv", list[list.selected].url) ; return end
+
     mp.commandv("loadfile", list[list.selected].url, flag)
     if flag == "replace" then list:close() end
 end
 
 table.insert(list.keybinds, {"ENTER", "play", function() play_result("replace") end, {}})
 table.insert(list.keybinds, {"Shift+ENTER", "play_append", function() play_result("append-play") end, {}})
+table.insert(list.keybinds, {"Ctrl+ENTER", "play_new_window", function() play_result("new_window") end, {}})
 
 local function open_search_input()
     ui.get_user_input(function(input)
