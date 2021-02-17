@@ -89,6 +89,10 @@ Allows you to apply a profile with a timeout, after which another profile is cal
 An API to allow scripts to request text input from the user over the OSD.
 The script is built around a modified version of mpv's console.lua, so supports almost all the same keybinds.
 
+## vars
+
+This script allows users to set custom variables which can be used in commands and profiles.
+
 ## youtube-search
 
 A script that allows users to search and open youtube results from within mpv.
