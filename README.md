@@ -59,6 +59,10 @@ Switches to a music profile when an audio file is being played and switches back
 
 Automatically converts a onedrive share link into a direct path which mpv can play, Windows only.
 
+## [open-file](https://github.com/CogentRedTester/mpv-user-input/blob/master/examples/open-file.lua)
+
+Uses [mpv-user-input](#user-input) to create an open file dialogue box.
+
 ## ordered-chapters-playlist
 
 A script to point the player towards an ordered chapters playlist for devices which don't have direct access to their file systems.
