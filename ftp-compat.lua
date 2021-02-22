@@ -7,17 +7,15 @@
         - converts filepaths taken directly from a browser into a string format readable by mpv
             -e.g. "ftp://test%20ing" would become "ftp://test ing"
 
-        - if a directory is loaded it attempts to open a playlist file inside it (default is playlist.pls)
+        - if a directory is loaded it attempts to open a playlist file inside it (default is .folder.m3u)
 ]]--
 
 local mp = require 'mp'
 local opt = require 'mp.options'
 local msg = require 'mp.msg'
 
---add options using script-opts=ftpopts-option=value
+--add options using script-opts=ftp_compat-option=value
 local o = {
-    force_enable = false,
-
     directory_playlist = '.folder.m3u',
 }
 
@@ -46,9 +44,9 @@ local function fixFtpPath()
     path = path:gsub([[\]],[[/]])
     path = decodeURI(path)
 
-    --if there is no period in the filename then the file is actually a directory
+    --if the path ends in a '/' then we consider it a directory
     if not path:match("/[^/]+$") then
-        msg.info('directory loaded, attempting to load playlist file')
+        msg.info('directory loaded - attempting to load playlist file')
         path = path .. o.directory_playlist
     end
 
@@ -60,13 +58,13 @@ local function testFTP()
     msg.verbose('checking for ftp protocol')
     path = mp.get_property('stream-open-filename')
 
-    if o.force_enable or path:find("s?ftp://") == 1 then
-        msg.info('FTP protocol detected, modifying settings')
+    if path:find("ftp://") == 1 then
+        msg.info('ftp protocol detected - attempting to fix path')
         fixFtpPath()
     end
 end
 
---testFTP doesn't strictly need to be a hook, but I don't want it to run asynchronously with fixFtpPath
+--attempts to fix the path on mpv fail
 mp.add_hook('on_load_fail', 50, testFTP)
 
 --script messages for loading ftp tracks as external files
