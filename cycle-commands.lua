@@ -37,10 +37,7 @@ local function main(...)
     local commands = {...}
 
     --to identify the specific cycle we'll concatenate all the strings together to use as our table key
-    local str = ""
-    for _,v in ipairs(commands) do
-        str = str..'['..v..'] '
-    end
+    local str = table.concat(commands, " | ")
     msg.trace('recieved: ' .. str)
 
     if iterators[str] == nil then
