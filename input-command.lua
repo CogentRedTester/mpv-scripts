@@ -70,7 +70,7 @@ local function main(command, ...)
 
             if i == num_args then mp.command(command) end
         end, {
-            id = tostring(i),
+            id = command..'/'..tostring(i),
             queueable = true,
             text = "Enter argument "..i.." for command: "..command_copy
         })
