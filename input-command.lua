@@ -20,14 +20,6 @@ package.path = mp.command_native({"expand-path", "~~/script-modules/?.lua;"}) ..
 local input = require "user-input-module"
 
 local function substitute_arg(command, arg, text, opts)
-    local opts_str = opts
-    opts = {}
-    if opts_str then
-        for str in opts_str:gmatch("[^|]+") do
-            local key = str:match("^[^=]+")
-            opts[key] = str:sub(key:len()+2)
-        end
-    end
 
     return command:gsub( "%%%%*"..arg, function(str)
         local prepended_hashes = str:match("^%%+"):len()
@@ -42,13 +34,28 @@ local function substitute_arg(command, arg, text, opts)
     end)
 end
 
-local command_arg_nums = {}
+local commands = {}
 
 local function main(command, ...)
-    local num_args = command_arg_nums[command]
-    local opts = {...}
+    local num_args, opts
 
-    if not num_args then
+    if commands[command] then
+        num_args = commands[command].num_args
+        opts = commands[command].opts
+
+    else
+        commands[command] = {}
+        opts = {...}
+
+        for i, opt in ipairs(opts) do
+            opts[i] = {}
+            for str in opt:gmatch("[^|]+") do
+                local key = str:match("^[^=]+")
+                opts[i][key] = str:sub(key:len()+2)
+            end
+        end
+        commands[command].opts = opts
+
         local args = {}
         for str in command:gmatch("%%%%*[%d]*") do
             local prepended_hashes = str:match("^%%+"):len()
@@ -59,7 +66,7 @@ local function main(command, ...)
             end
         end
         num_args = #args
-        command_arg_nums[command] = num_args
+        commands[command].num_args = num_args
     end
 
     local command_copy = command
@@ -72,7 +79,8 @@ local function main(command, ...)
         end, {
             id = command..'/'..tostring(i),
             queueable = true,
-            text = "Enter argument "..i.." for command: "..command_copy
+            request_text = "Enter argument "..i.." for command: "..command_copy,
+            default_input = opts[i].default or ""
         })
     end
 end
