@@ -1,5 +1,10 @@
 # My Lua scripts
 
+A collection of scripts I have written for mpv over the years. Small ones are kept in this repository, larger ones have their own.
+Please keep in mind that not all of these scripts are maintained, and some of these were experiments which didn't pan out.
+Nevertheless, feel free to submit issues if something breaks, and if you have any interesting script ideas feel free to make a
+suggestion in the discussions tab.
+
 ## after-playback
 
 Sends commands to nircmd (windows only) on playback finish. Commands include sleep, hibernate, shutdown, lock. Full list is in the file
