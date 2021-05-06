@@ -18,6 +18,7 @@ local utils = require 'mp.utils'
 
 local function main()
     local path = mp.get_property('stream-open-filename')
+    if path:sub(1, 6) == "edl://" then return end
     if utils.file_info(path) then return end
 
     path = path:gsub('\\', '/')
