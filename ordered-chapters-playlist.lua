@@ -29,5 +29,5 @@ local function main()
 end
 
 --we need to run the function for both in case a script has modified the path during the on_load_fail hook
-mp.add_hook('on_load', 100, main)
-mp.add_hook('on_load_fail', 100, main)
+mp.add_hook('on_load', 45, main)
+mp.add_hook('on_load_fail', 45, main)
