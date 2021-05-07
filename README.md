@@ -102,6 +102,11 @@ Allows in-player searching of keybinds, commands, properties, and options, and d
 
 Requires a build of mpv with console.lua for dynamic input.
 
+## [segment-linking](https://github.com/CogentRedTester/mpv-segment-linking)
+
+Implements support for Matroska [hard segment linking](https://www.ietf.org/archive/id/draft-ietf-cellar-matroska-06.html#name-hard-linking).
+This is **not** the same as [ordered chapters](https://www.ietf.org/archive/id/draft-ietf-cellar-matroska-06.html#name-medium-linking), which mpv already supports natively.
+
 ## show-errors
 
 Prints error messages onto the OSD
