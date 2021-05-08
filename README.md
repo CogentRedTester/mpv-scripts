@@ -15,6 +15,11 @@ Uses nircmd (windows only) to change the resolution and refresh rate of the moni
 Saves the original monitor resolution and reverts changes on exit and when hotkey is pressed.
 Full description in file.
 
+## [chapter-list](https://github.com/CogentRedTester/mpv-scroll-list/blob/master/examples/chapter-list.lua)
+
+Creates an scrollable list of chapters to allow more granular chapter selection.
+Requires [scroll-list](#scroll-list)
+
 ## command-timeout
 
 Sends an input command after a specified delay
@@ -100,7 +105,7 @@ A lua module to easily allow the creation of interactive scrollable lists.
 
 Allows in-player searching of keybinds, commands, properties, and options, and displays the results on the OSD.
 
-Requires a build of mpv with console.lua for dynamic input.
+Requires [scroll-list](#scroll-list) and [user-input](#user-input).
 
 ## [segment-linking](https://github.com/CogentRedTester/mpv-segment-linking)
 
