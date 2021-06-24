@@ -67,13 +67,13 @@ local function handle_save_request(directory, name, relative)
         input.get_user_input(function(res)
             if not need_name then save_playlist(res, name, relative)
             else directory = res end
-        end, {id = "dir", text = "[save-playlist] Enter save directory:"})
+        end, {id = "dir", text = "Enter save directory:"})
     end
 
     if need_name then
         input.get_user_input(function(res)
             save_playlist(directory, res, relative)
-        end, {id = "name", text = "[save-playlist] Enter playlist name:"})
+        end, {id = "name", text = "Enter playlist name:"})
     end
 end
 
