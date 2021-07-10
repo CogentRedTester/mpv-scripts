@@ -54,6 +54,21 @@ local function encode_string(str)
 	return output
 end
 
+--convert HTML character codes to the correct characters
+local function html_decode(str)
+    if type(str) ~= "string" then return string end
+
+    return str:gsub("&(#?)(%w-);", function(is_ascii, code)
+        if is_ascii == "#" then return string.char(tonumber(code)) end
+        if code == "amp" then return "&" end
+        if code == "quot" then return '"' end
+        if code == "apos" then return "'" end
+        if code == "lt" then return "<" end
+        if code == "gt" then return ">" end
+        return nil
+    end)
+end
+
 --sends an API request
 local function send_request(type, queries)
     local url = "https://www.googleapis.com/youtube/v3/"..type
@@ -77,6 +92,14 @@ local function send_request(type, queries)
     local response = utils.parse_json(request.stdout)
     msg.trace(utils.to_string(response))
     if request.status ~= 0 then msg.error(request.stderr) ; return nil end
+
+    if not response.items then return msg.warn("Search did not return a results list") end
+
+    --decodes the HTML character codes in the result titles
+    for _, item in ipairs(response.items) do
+        item.snippet.title = html_decode(item.snippet.title)
+    end
+
     return response
 end
 
@@ -113,7 +136,7 @@ local function search(query)
         maxResults = o.num_results
     })
 
-    if not response or not response.items then return end
+    if not response then return end
     reset_list()
 
     for _, item in ipairs(response.items) do
