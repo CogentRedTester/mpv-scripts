@@ -44,13 +44,14 @@ opts.read_options(o)
 
 local ass_escape = list.ass_escape
 
---taken from: https://gist.github.com/liukun/f9ce7d6d14fa45fe9b924a3eed5c3d99
-local function urlencode(url)
-    if type(url) ~= "string" then return url end
-    url = url:gsub("\n", "\r\n")
-    url = url:gsub("([^%w ])", function (c) string.format("%%%02X", string.byte(c)) end)
-    url = url:gsub(" ", "+")
-    return url
+--encodes a string so that it uses url percent encoding
+--this function is based on code taken from here: https://rosettacode.org/wiki/URL_encoding#Lua
+local function encode_string(str)
+    if type(str) ~= "string" then return str end
+	local output, t = str:gsub("[^%w]", function(char)
+        return string.format("%%%X",string.byte(char))
+    end)
+	return output
 end
 
 --sends an API request
@@ -60,10 +61,11 @@ local function send_request(type, queries)
     url = url.."?key="..o.API_key
 
     for key, value in pairs(queries) do
-        url = url.."&"..key.."="..urlencode(value)
+        msg.verbose(value, encode_string(value))
+        url = url.."&"..key.."="..encode_string(value)
     end
 
-
+    msg.debug(url)
     local request = mp.command_native({
         name = "subprocess",
         capture_stdout = true,
@@ -73,6 +75,7 @@ local function send_request(type, queries)
     })
 
     local response = utils.parse_json(request.stdout)
+    msg.trace(utils.to_string(response))
     if request.status ~= 0 then msg.error(request.stderr) ; return nil end
     return response
 end
@@ -110,7 +113,7 @@ local function search(query)
         maxResults = o.num_results
     })
 
-    if not response then return end
+    if not response or not response.items then return end
     reset_list()
 
     for _, item in ipairs(response.items) do
