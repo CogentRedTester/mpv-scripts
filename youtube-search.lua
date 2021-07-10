@@ -56,7 +56,7 @@ end
 
 --convert HTML character codes to the correct characters
 local function html_decode(str)
-    if type(str) ~= "string" then return string end
+    if type(str) ~= "string" then return str end
 
     return str:gsub("&(#?)(%w-);", function(is_ascii, code)
         if is_ascii == "#" then return string.char(tonumber(code)) end
