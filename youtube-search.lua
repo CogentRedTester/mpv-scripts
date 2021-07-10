@@ -169,12 +169,15 @@ local function open_search_input()
     ui.get_user_input(function(input)
         if not input then return end
         search( input )
-    end)
+    end, { request_text = "Enter Query:" })
 end
 
 mp.add_key_binding("Ctrl+y", "yt", open_search_input)
 
 mp.add_key_binding("Y", "youtube-search", function()
     if not list.hidden then open_search_input()
-    else list:open() end
+    else
+        list:open()
+        if #list.list == 0 then open_search_input() end
+    end
 end)
