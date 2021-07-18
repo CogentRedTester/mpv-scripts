@@ -38,7 +38,7 @@ local function main(...)
 
     --to identify the specific cycle we'll concatenate all the strings together to use as our table key
     local str = table.concat(commands, " | ")
-    msg.trace('recieved: ' .. str)
+    msg.trace('recieved:', str)
 
     if iterators[str] == nil then
         msg.debug('unknown cycle, creating iterator')
@@ -51,7 +51,7 @@ local function main(...)
     --mp.command should run the commands exactly as if they were entered in input.conf.
     --This should provide universal support for all input.conf command syntax
     local cmd = commands[ iterators[str] ]
-    msg.verbose('sending command: ' .. cmd)
+    msg.verbose('sending command:', cmd)
     mp.command(cmd)
 end
 
