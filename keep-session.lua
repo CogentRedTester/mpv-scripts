@@ -33,25 +33,17 @@ local o = {
     --runs the script automatically when started in idle mode and no files are in the playlist
     auto_load = true,
 
-    --directory to keep a record of the previous session
-    save_directory = mp.get_property('watch-later-directory', ''),
-
-    --name of the file to save the playlist
-    --save it as a .pls file to be able to open directly
-    session_file = "prev-session",
+    --file path of the default session file
+    --save it as a .pls file to be able to open directly (though it will not maintain the playlist positions)
+    session_file = mp.get_property('watch-later-directory', '~~/watch_later/').."prev-session",
 
     --maintain position in the playlist
     maintain_pos = true,
 }
 
---if a specific directory has not been set then this property seems to return an empty string
-if o.save_directory == "" then
-    o.save_directory = "~~/watch_later"
-end
-
 opt.read_options(o, 'keep_session', function() end)
 
-local save_file = mp.command_native({"expand-path", o.save_directory}) .. '/' .. o.session_file
+local save_file = mp.command_native({"expand-path", o.session_file})
 
 --saves the current playlist as a json string
 local function save_playlist(file)
