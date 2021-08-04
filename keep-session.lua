@@ -13,8 +13,10 @@
 
     You can disable the automatic stuff and use script messages to load/save playlists as well
 
-    script-message save-session
-    script-message reload-session
+    script-message save-session [session-file]
+    script-message reload-session [session-file]
+
+    If not included `session-file` will use the default file specified in script-opts
 
     available at: https://github.com/CogentRedTester/mpv-scripts
 ]]--
@@ -53,8 +55,7 @@ local save_file = mp.command_native({"expand-path", o.save_directory}) .. '/' ..
 
 --saves the current playlist as a json string
 local function save_playlist(file)
-    if not file then file = save_file
-    else file = file.."/prev-session" end
+    if not file then file = save_file end
     msg.verbose('saving current session')
 
     local playlist = mp.get_property_native('playlist')
@@ -86,8 +87,7 @@ end
 
 --turns the previous json string into a table and adds all the files to the playlist
 local function load_prev_session(file)
-    if not file then file = save_file
-    else file = file.."/prev-session" end
+    if not file then file = save_file end
 
     --loads the previous session file
     msg.verbose('loading previous session')
@@ -128,7 +128,7 @@ mp.register_event('shutdown', shutdown)
 --otherwise modifying playlist-start becomes unreliable
 if o.auto_load and (mp.get_property_number('playlist-count', 0) == 0) then
     local function temp()
-        load_prev_session(save_file)
+        load_prev_session()
         mp.unobserve_property(temp)
     end
     mp.observe_property("idle", "string", temp)
