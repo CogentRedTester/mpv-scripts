@@ -35,7 +35,7 @@ local o = {
 
     --file path of the default session file
     --save it as a .pls file to be able to open directly (though it will not maintain the playlist positions)
-    session_file = mp.get_property('watch-later-directory', '~~/watch_later/').."prev-session",
+    session_file = "",
 
     --maintain position in the playlist
     maintain_pos = true,
@@ -43,6 +43,14 @@ local o = {
 
 opt.read_options(o, 'keep_session', function() end)
 
+--sets the default session file to the watch_later directory or ~~/watch_later/
+if o.session_file == "" then
+    local watch_later = mp.get_property('watch-later-directory', "")
+    if watch_later == "" then watch_later = "~~/watch_later/" end
+    if not watch_later:find("[/\\]$") then watch_later = watch_later..'/' end
+
+    o.session_file = watch_later.."prev-session"
+end
 local save_file = mp.command_native({"expand-path", o.session_file})
 
 --saves the current playlist as a json string
