@@ -56,7 +56,7 @@ local save_file = mp.command_native({"expand-path", o.session_file})
 --saves the current playlist as a json string
 local function save_playlist(file)
     if not file then file = save_file end
-    msg.verbose('saving current session')
+    msg.verbose('saving current session to', file)
 
     local playlist = mp.get_property_native('playlist')
 
@@ -66,6 +66,8 @@ local function save_playlist(file)
     end
 
     local session = io.open(file, 'w')
+    if not session then return msg.error("Failed to write to file", file) end
+
     session:write("[playlist]\n")
     session:write(mp.get_property('playlist-pos') .. "\n")
 
@@ -90,7 +92,7 @@ local function load_prev_session(file)
     if not file then file = save_file end
 
     --loads the previous session file
-    msg.verbose('loading previous session')
+    msg.verbose('loading previous session from', file)
     local session = io.open(file, "r+")
 
     --this should only occur when loading the script for the first time,
@@ -104,6 +106,7 @@ local function load_prev_session(file)
     local pl_start
     if o.maintain_pos then
         previous_playlist_pos = session:read()
+        msg.verbose("restoring playlist position", previous_playlist_pos)
         pl_start = mp.get_property('playlist-start')
         mp.set_property('playlist-start', previous_playlist_pos)
     end
