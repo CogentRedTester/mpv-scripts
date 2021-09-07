@@ -93,7 +93,12 @@ local function send_request(type, queries)
     msg.trace(utils.to_string(response))
     if request.status ~= 0 then msg.error(request.stderr) ; return nil end
 
-    if not response.items then return msg.warn("Search did not return a results list") end
+    --print error messages to console if the API request fails
+    if not response.items then
+        msg.warn("Search did not return a results list")
+        msg.error(request.stdout)
+        return
+    end
 
     --decodes the HTML character codes in the result titles
     for _, item in ipairs(response.items) do
