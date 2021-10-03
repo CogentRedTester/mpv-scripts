@@ -89,6 +89,11 @@ shuffles the playlist and moves the current file to the start of the playlist
 
 Parses a script-opt and sends it as a command. Allows input commands to be sent via profiles.
 
+## [read-file](https://github.com/CogentRedTester/mpv-read-file)
+
+An API that provides scripts with a universal interface for reading text files.
+This allows scripts to easily read network files over a variety of protocols.
+
 ## save-playlist
 
 A script for saving m3u playlists based on mpvs current internal playlist.
