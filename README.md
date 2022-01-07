@@ -37,6 +37,10 @@ Cycles through a series of commands on a keypress. Each iteration of the cycle c
 
 Cycles through a list of profiles sent via a script message and prints the profile-desc to the OSD. More details at the top of the file
 
+## delay-command
+
+An extremely simple script which executes an input.conf command only after a set delay.
+
 ## display-profiles
 
 Automatically applies profiles when the mpv window is moved to a new display
