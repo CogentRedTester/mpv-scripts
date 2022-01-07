@@ -31,16 +31,35 @@ package.path = mp.command_native({"expand-path", "~~/script-modules/?.lua;"}) ..
 local ui = require "user-input-module"
 local list = require "scroll-list"
 
-list.header = "Youtube Search Results\\N-----------------------------"
-list.num_entries = 18
-list.list_style = [[{\fs10}\N{\q2\fs25\c&Hffffff&}]]
-
 local o = {
     API_key = "",
-    num_results = 40
+
+    --invidious searches may not respect this number
+    num_results = 40,
+
+    --the url to send API calls to
+    api_path = "https://www.googleapis.com/youtube/v3/",
+
+    --the url to load videos from
+    frontend = "https://www.youtube.com",
+
+    --use invidious API calls
+    invidious_api = false
 }
 
 opts.read_options(o)
+
+--ensure the URL options are properly formatted
+local function format_options()
+    if o.api_path:sub(-1) ~= "/" then o.api_path = o.api_path.."/" end
+    if o.frontend:sub(-1) == "/" then o.frontend = o.frontend:sub(1, -2) end
+end
+
+format_options()
+
+list.header = ("%s Search: \\N-------------------------------------------------"):format(o.invidious_api and "Invidious" or "Youtube")
+list.num_entries = 17
+list.list_style = [[{\fs10}\N{\q2\fs25\c&Hffffff&}]]
 
 local ass_escape = list.ass_escape
 
@@ -69,9 +88,65 @@ local function html_decode(str)
     end)
 end
 
+--creates a formatted results table from an invidious API call
+function format_invidious_results(response, type, queries)
+    if not response then return nil end
+    local results = {}
+
+    for i, item in ipairs(response) do
+        if i > o.maxResults then break end
+
+        local t = {}
+        table.insert(results, t)
+
+        t.title = html_decode(item.title)
+        t.channelTitle = html_decode(item.author)
+        if item.type == "video" then
+            t.type = "video"
+            t.id = item.videoId
+        elseif item.type == "playlist" then
+            t.type = "playlist"
+            t.id = item.playlistId
+        elseif item.type == "channel" then
+            t.type = "channel"
+            t.id = item.authorId
+            t.title = t.channelTitle
+        end
+    end
+
+    return results
+end
+
+--creates a formatted results table from a youtube API call
+function format_youtube_results(response, type, queries)
+    if not response.items then return nil end
+    local results = {}
+
+    for _, item in ipairs(response.items) do
+        local t = {}
+        table.insert(results, t)
+
+        t.title = html_decode(item.snippet.title)
+        t.channelTitle = html_decode(item.snippet.channelTitle)
+
+        if item.id.kind == "youtube#video" then
+            t.type = "video"
+            t.id = item.id.videoId
+        elseif item.id.kind == "youtube#playlist" then
+            t.type = "playlist"
+            t.id = item.id.playlistId
+        elseif item.id.kind == "youtube#channel" then
+            t.type = "channel"
+            t.id = item.id.channelId
+        end
+    end
+
+    return results
+end
+
 --sends an API request
 local function send_request(type, queries)
-    local url = "https://www.googleapis.com/youtube/v3/"..type
+    local url = o.api_path..type
 
     url = url.."?key="..o.API_key
 
@@ -93,16 +168,15 @@ local function send_request(type, queries)
     msg.trace(utils.to_string(response))
     if request.status ~= 0 then msg.error(request.stderr) ; return nil end
 
+    --we need to modify the returned results so that the rest of the script can read it
+    if o.invidious_api then response = format_invidious_results(response)
+    else response = format_youtube_results(response) end
+
     --print error messages to console if the API request fails
-    if not response.items then
+    if not response then
         msg.warn("Search did not return a results list")
         msg.error(request.stdout)
         return
-    end
-
-    --decodes the HTML character codes in the result titles
-    for _, item in ipairs(response.items) do
-        item.snippet.title = html_decode(item.snippet.title)
     end
 
     return response
@@ -110,22 +184,22 @@ end
 
 local function insert_video(item)
     list:insert({
-        ass = ("%s   {\\c&aaaaaa&}%s"):format(ass_escape(item.snippet.title), ass_escape(item.snippet.channelTitle)),
-        url = "https://www.youtube.com/watch?v="..item.id.videoId
+        ass = ("%s   {\\c&aaaaaa&}%s"):format(ass_escape(item.title), ass_escape(item.channelTitle)),
+        url = ("%s/watch?v=%s"):format(o.frontend, item.id)
     })
 end
 
 local function insert_playlist(item)
     list:insert({
-        ass = ("🖿 %s   {\\c&aaaaaa&}%s"):format(ass_escape(item.snippet.title), ass_escape(item.snippet.channelTitle)),
-        url = "https://www.youtube.com/playlist?list="..item.id.playlistId
+        ass = ("🖿 %s   {\\c&aaaaaa&}%s"):format(ass_escape(item.title), ass_escape(item.channelTitle)),
+        url = ("%s/playlist?list=%s"):format(o.frontend, item.id)
     })
 end
 
 local function insert_channel(item)
     list:insert({
-        ass = ("👤 %s"):format(ass_escape(item.snippet.title)),
-        url = "https://www.youtube.com/channel/"..item.id.channelId
+        ass = ("👤 %s"):format(ass_escape(item.title)),
+        url = ("%s/channel/%s"):format(o.frontend, item.id)
     })
 end
 
@@ -134,26 +208,39 @@ local function reset_list()
     list:clear()
 end
 
+--creates the search request queries depending on what API we're using
+local function get_search_queries(query)
+    if o.invidious_api then
+        return {
+            q = query,
+            type = "all",
+            page = 1
+        }
+    else
+        return {
+            q = query,
+            part = "id,snippet",
+            maxResults = o.num_results
+        }
+    end
+end
+
 local function search(query)
-    local response = send_request("search", {
-        q = query,
-        part = "id,snippet",
-        maxResults = o.num_results
-    })
+    local response = send_request("search", get_search_queries(query))
 
     if not response then return end
     reset_list()
 
-    for _, item in ipairs(response.items) do
-        if item.id.kind == "youtube#video" then
+    for _, item in ipairs(response) do
+        if item.type == "video" then
             insert_video(item)
-        elseif item.id.kind == "youtube#playlist" then
+        elseif item.type == "playlist" then
             insert_playlist(item)
-        elseif item.id.kind == "youtube#channel" then
+        elseif item.type == "channel" then
             insert_channel(item)
         end
     end
-    list.header = "Youtube Search: "..ass_escape(query).."\\N-------------------------------------------------"
+    list.header = ("%s Search: %s\\N-------------------------------------------------"):format(o.invidious_api and "Invidious" or "Youtube", ass_escape(query))
     list:update()
     list:open()
 end
