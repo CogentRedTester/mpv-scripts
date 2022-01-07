@@ -44,7 +44,7 @@ local o = {
     frontend = "https://www.youtube.com",
 
     --use invidious API calls
-    invidious_api = false
+    invidious = false
 }
 
 opts.read_options(o)
@@ -57,7 +57,7 @@ end
 
 format_options()
 
-list.header = ("%s Search: \\N-------------------------------------------------"):format(o.invidious_api and "Invidious" or "Youtube")
+list.header = ("%s Search: \\N-------------------------------------------------"):format(o.invidious and "Invidious" or "Youtube")
 list.num_entries = 17
 list.list_style = [[{\fs10}\N{\q2\fs25\c&Hffffff&}]]
 
@@ -89,12 +89,12 @@ local function html_decode(str)
 end
 
 --creates a formatted results table from an invidious API call
-function format_invidious_results(response, type, queries)
+function format_invidious_results(response)
     if not response then return nil end
     local results = {}
 
     for i, item in ipairs(response) do
-        if i > o.maxResults then break end
+        if i > o.num_results then break end
 
         local t = {}
         table.insert(results, t)
@@ -118,7 +118,7 @@ function format_invidious_results(response, type, queries)
 end
 
 --creates a formatted results table from a youtube API call
-function format_youtube_results(response, type, queries)
+function format_youtube_results(response)
     if not response.items then return nil end
     local results = {}
 
@@ -169,7 +169,7 @@ local function send_request(type, queries)
     if request.status ~= 0 then msg.error(request.stderr) ; return nil end
 
     --we need to modify the returned results so that the rest of the script can read it
-    if o.invidious_api then response = format_invidious_results(response)
+    if o.invidious then response = format_invidious_results(response)
     else response = format_youtube_results(response) end
 
     --print error messages to console if the API request fails
@@ -210,7 +210,7 @@ end
 
 --creates the search request queries depending on what API we're using
 local function get_search_queries(query)
-    if o.invidious_api then
+    if o.invidious then
         return {
             q = query,
             type = "all",
@@ -240,7 +240,7 @@ local function search(query)
             insert_channel(item)
         end
     end
-    list.header = ("%s Search: %s\\N-------------------------------------------------"):format(o.invidious_api and "Invidious" or "Youtube", ass_escape(query))
+    list.header = ("%s Search: %s\\N-------------------------------------------------"):format(o.invidious and "Invidious" or "Youtube", ass_escape(query))
     list:update()
     list:open()
 end
