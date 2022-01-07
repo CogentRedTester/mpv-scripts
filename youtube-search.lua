@@ -20,6 +20,21 @@
     https://console.developers.google.com/apis/api/youtube.googleapis.com/
 
     The script also requires that curl be in the system path.
+
+    An alternative to using the official youtube API is to use Invidious.
+    This script has experimental support for Invidious searches using the 'invidious',
+    'API_path', and 'frontend' options. API_path refers to the url of the API the
+    script uses, Invidious API paths are usually in the form:
+        https://domain.name/api/v1/
+    The frontend option is the url to actualy try to load videos from. This
+    can probably be the same as the above url:
+        https://domain.name
+    Since the url syntax seems to be identical between Youtube and Invidious,
+    it should be possible to mix these options, a.k.a. using the Google
+    API to get videos from an Invidious frontend, or to use an Invidious
+    API to get videos from Youtube.
+    The 'invidious' option tells the script that the API_path is for an
+    Invidious path. This is to support other possible API options in the future.
 ]]--
 
 local mp = require "mp"
@@ -38,7 +53,7 @@ local o = {
     num_results = 40,
 
     --the url to send API calls to
-    api_path = "https://www.googleapis.com/youtube/v3/",
+    API_path = "https://www.googleapis.com/youtube/v3/",
 
     --the url to load videos from
     frontend = "https://www.youtube.com",
@@ -51,7 +66,7 @@ opts.read_options(o)
 
 --ensure the URL options are properly formatted
 local function format_options()
-    if o.api_path:sub(-1) ~= "/" then o.api_path = o.api_path.."/" end
+    if o.API_path:sub(-1) ~= "/" then o.API_path = o.API_path.."/" end
     if o.frontend:sub(-1) == "/" then o.frontend = o.frontend:sub(1, -2) end
 end
 
@@ -146,7 +161,7 @@ end
 
 --sends an API request
 local function send_request(type, queries)
-    local url = o.api_path..type
+    local url = o.API_path..type
 
     url = url.."?key="..o.API_key
 
