@@ -55,11 +55,17 @@ local o = {
     --the url to send API calls to
     API_path = "https://www.googleapis.com/youtube/v3/",
 
+    --attempt this API if the default fails
+    fallback_API_path = "",
+
     --the url to load videos from
     frontend = "https://www.youtube.com",
 
     --use invidious API calls
-    invidious = false
+    invidious = false,
+
+    --whether the fallback uses invidious as well
+    fallback_invidious = false
 }
 
 opts.read_options(o)
@@ -160,8 +166,8 @@ function format_youtube_results(response)
 end
 
 --sends an API request
-local function send_request(type, queries)
-    local url = o.API_path..type
+local function send_request(type, queries, API_path)
+    local url = (API_path or o.API_path)..type
 
     url = url.."?key="..o.API_key
 
@@ -224,8 +230,8 @@ local function reset_list()
 end
 
 --creates the search request queries depending on what API we're using
-local function get_search_queries(query)
-    if o.invidious then
+local function get_search_queries(query, invidious)
+    if invidious then
         return {
             q = query,
             type = "all",
@@ -241,7 +247,11 @@ local function get_search_queries(query)
 end
 
 local function search(query)
-    local response = send_request("search", get_search_queries(query))
+    local response = send_request("search", get_search_queries(query, o.invidious))
+    if not response and o.fallback_API_path ~= "" then
+        msg.info("search failed - attempting fallback")
+        response = send_request("search", get_search_queries(query, o.fallback_invidious), o.fallback_API_path)
+    end
 
     if not response then return end
     reset_list()
