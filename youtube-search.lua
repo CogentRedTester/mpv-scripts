@@ -73,6 +73,7 @@ opts.read_options(o)
 --ensure the URL options are properly formatted
 local function format_options()
     if o.API_path:sub(-1) ~= "/" then o.API_path = o.API_path.."/" end
+    if o.fallback_API_path:sub(-1) ~= "/" then o.fallback_API_path = o.fallback_API_path.."/" end
     if o.frontend:sub(-1) == "/" then o.frontend = o.frontend:sub(1, -2) end
 end
 
@@ -140,7 +141,7 @@ end
 
 --creates a formatted results table from a youtube API call
 function format_youtube_results(response)
-    if not response.items then return nil end
+    if not response or not response.items then return nil end
     local results = {}
 
     for _, item in ipairs(response.items) do
@@ -166,13 +167,12 @@ function format_youtube_results(response)
 end
 
 --sends an API request
-local function send_request(type, queries, API_path)
+local function send_request(type, queries, API_path, invidious)
     local url = (API_path or o.API_path)..type
-
-    url = url.."?key="..o.API_key
+    url = url.."?"
 
     for key, value in pairs(queries) do
-        msg.verbose(value, encode_string(value))
+        msg.verbose(key, value)
         url = url.."&"..key.."="..encode_string(value)
     end
 
@@ -190,7 +190,7 @@ local function send_request(type, queries, API_path)
     if request.status ~= 0 then msg.error(request.stderr) ; return nil end
 
     --we need to modify the returned results so that the rest of the script can read it
-    if o.invidious then response = format_invidious_results(response)
+    if invidious then response = format_invidious_results(response)
     else response = format_youtube_results(response) end
 
     --print error messages to console if the API request fails
@@ -239,6 +239,7 @@ local function get_search_queries(query, invidious)
         }
     else
         return {
+            key = o.API_key,
             q = query,
             part = "id,snippet",
             maxResults = o.num_results
@@ -247,10 +248,10 @@ local function get_search_queries(query, invidious)
 end
 
 local function search(query)
-    local response = send_request("search", get_search_queries(query, o.invidious))
+    local response = send_request("search", get_search_queries(query, o.invidious), o.API_path, o.invidious)
     if not response and o.fallback_API_path ~= "" then
         msg.info("search failed - attempting fallback")
-        response = send_request("search", get_search_queries(query, o.fallback_invidious), o.fallback_API_path)
+        response = send_request("search", get_search_queries(query, o.fallback_invidious), o.fallback_API_path, o.fallback_invidious)
     end
 
     if not response then return end
