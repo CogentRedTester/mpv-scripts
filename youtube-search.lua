@@ -82,6 +82,7 @@ format_options()
 list.header = ("%s Search: \\N-------------------------------------------------"):format(o.invidious and "Invidious" or "Youtube")
 list.num_entries = 17
 list.list_style = [[{\fs10}\N{\q2\fs25\c&Hffffff&}]]
+list.empty_text = "enter search query"
 
 local ass_escape = list.ass_escape
 
@@ -200,6 +201,7 @@ end
 --sends a search API request - handles Google/Invidious API differences
 local function search_request(queries, API_path, invidious)
     list.header = ("%s Search: %s\\N-------------------------------------------------"):format(invidious and "Invidious" or "Youtube", ass_escape(queries.q, true))
+    list.empty_text = "~"
     list:update()
     local results = {}
 
@@ -214,6 +216,7 @@ local function search_request(queries, API_path, invidious)
             local response = send_request("search", queries, API_path)
             response = format_invidious_results(response)
             if not response then msg.warn("Search did not return a results list") ; return end
+            if #response == 0 then break end
 
             for _, item in ipairs(response) do
                 table.insert(results, item)
@@ -232,6 +235,7 @@ local function search_request(queries, API_path, invidious)
         return
     end
 
+    list.empty_text = "no results"
     return results
 end
 
