@@ -199,6 +199,8 @@ end
 
 --sends a search API request - handles Google/Invidious API differences
 local function search_request(queries, API_path, invidious)
+    list.header = ("%s Search: %s\\N-------------------------------------------------"):format(invidious and "Invidious" or "Youtube", ass_escape(queries.q, true))
+    list:update()
     local results = {}
 
     --we need to modify the returned results so that the rest of the script can read it
@@ -296,7 +298,6 @@ local function search(query)
             insert_channel(item)
         end
     end
-    list.header = ("%s Search: %s\\N-------------------------------------------------"):format(o.invidious and "Invidious" or "Youtube", ass_escape(query))
     list:update()
     list:open()
 end
