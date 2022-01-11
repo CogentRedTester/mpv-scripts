@@ -49,7 +49,7 @@ local list = require "scroll-list"
 local o = {
     API_key = "",
 
-    --invidious searches may not respect this number
+    --number of search results to show in the list
     num_results = 40,
 
     --the url to send API calls to
@@ -167,7 +167,7 @@ function format_youtube_results(response)
 end
 
 --sends an API request
-local function send_request(type, queries, API_path, invidious)
+local function send_request(type, queries, API_path)
     local url = (API_path or o.API_path)..type
     url = url.."?"
 
@@ -188,19 +188,49 @@ local function send_request(type, queries, API_path, invidious)
     local response = utils.parse_json(request.stdout)
     msg.trace(utils.to_string(response))
     if request.status ~= 0 then msg.error(request.stderr) ; return nil end
-
-    --we need to modify the returned results so that the rest of the script can read it
-    if invidious then response = format_invidious_results(response)
-    else response = format_youtube_results(response) end
-
-    --print error messages to console if the API request fails
     if not response then
-        msg.warn("Search did not return a results list")
+        msg.error("Could not parse response:")
         msg.error(request.stdout)
-        return
+        return nil
     end
 
     return response
+end
+
+--sends a search API request - handles Google/Invidious API differences
+local function search_request(queries, API_path, invidious)
+    local results = {}
+
+    --we need to modify the returned results so that the rest of the script can read it
+    if invidious then
+
+        --Invidious searches are done with pages rather than a max result number
+        local page = 1
+        while #results < o.num_results do
+            queries.page = page
+
+            local response = send_request("search", queries, API_path)
+            response = format_invidious_results(response)
+            if not response then msg.warn("Search did not return a results list") ; return end
+
+            for _, item in ipairs(response) do
+                table.insert(results, item)
+            end
+
+            page = page + 1
+        end
+    else
+        local response = send_request("search", queries, API_path)
+        results = format_youtube_results(response)
+    end
+
+    --print error messages to console if the API request fails
+    if not results then
+        msg.warn("Search did not return a results list")
+        return
+    end
+
+    return results
 end
 
 local function insert_video(item)
@@ -248,10 +278,10 @@ local function get_search_queries(query, invidious)
 end
 
 local function search(query)
-    local response = send_request("search", get_search_queries(query, o.invidious), o.API_path, o.invidious)
+    local response = search_request(get_search_queries(query, o.invidious), o.API_path, o.invidious)
     if not response and o.fallback_API_path ~= "" then
         msg.info("search failed - attempting fallback")
-        response = send_request("search", get_search_queries(query, o.fallback_invidious), o.fallback_API_path, o.fallback_invidious)
+        response = search_request(get_search_queries(query, o.fallback_invidious), o.fallback_API_path, o.fallback_invidious)
     end
 
     if not response then return end
