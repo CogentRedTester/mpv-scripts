@@ -201,6 +201,7 @@ end
 --sends a search API request - handles Google/Invidious API differences
 local function search_request(queries, API_path, invidious)
     list.header = ("%s Search: %s\\N-------------------------------------------------"):format(invidious and "Invidious" or "Youtube", ass_escape(queries.q, true))
+    list.list = {}
     list.empty_text = "~"
     list:update()
     local results = {}
