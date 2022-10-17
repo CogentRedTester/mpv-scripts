@@ -45,6 +45,15 @@ An extremely simple script which executes an input.conf command only after a set
 
 Automatically applies profiles when the mpv window is moved to a new display
 
+## display-name
+
+A simple script designed for windows that saves the name of the monitor that mpv is using into
+the `display_name` `shared_script_properties` field. This means that one can use conditional
+auto profiles with the name of the monitor.
+This is necessary on windows because the default display names that mpv uses
+are in the form `\\.\DISPLAY#`, which are completely useless for setting persistent profiles
+as the numbers can change between boots or display configurations.
+
 ## [dvd-browser](https://github.com/CogentRedTester/mpv-dvd-browser)
 
 This script uses the `lsdvd` commandline utility to allow users to view and select titles for DVDs from directly within mpv. The browser is interractive and allows for both playing the selected title, or appending it to the playlist. It is designed to be used stand-alone, or as an addon for file-browser. It also has automatic playlist support for DVDs.
