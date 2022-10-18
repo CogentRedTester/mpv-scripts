@@ -3,6 +3,8 @@
     the `display_name` `shared_script_properties` field. This means that one can use conditional
     auto profiles with the name of the monitor:
 
+    Use `mpv --idle=once --script-opts=display_names=yes` to get a list of display names.
+
     [PC]
     profile-cond=shared_script_properties['display_name'] ~= 'SAMSUNG'
     script-opts-append=changerefresh-auto=no
@@ -121,6 +123,6 @@ utils.shared_script_property_set('display_name', '')
 if mp.get_opt('display_names') then
     load_display_info()
     for name, display in pairs(displays) do
-        print(name, display['Monitor Name'])
+        msg.info(name, display['Monitor Name'])
     end
 end
