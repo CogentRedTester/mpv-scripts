@@ -62,7 +62,7 @@ local function load_display_info()
     end)
 
     if cmd.status ~= 0 then
-        msg.error('failed to run MultiMOnitorTool.exe. Status code:', cmd.status)
+        msg.error('failed to run MultiMonitorTool.exe. Status code:', cmd.status)
         return false
     end
 
