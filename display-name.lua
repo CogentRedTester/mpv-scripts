@@ -47,9 +47,10 @@ end
 -- loads the display information into the displays table
 local function load_display_info()
     local name = get_temp_file_name()
-    mp.command_native({
+    local cmd = mp.command_native({
         name = 'subprocess',
         playback_only = false,
+        capture_stdout = true,
         args = {'MultiMonitorTool.exe', '/scomma', name}
     })
 
@@ -57,6 +58,11 @@ local function load_display_info()
         msg.debug('deleting', name)
         os.remove(name)
     end)
+
+    if cmd.status ~= 0 then
+        msg.error('failed to run MultiMOnitorTool.exe. Status code:', cmd.status)
+        return false
+    end
 
     local f = io.open(name, "r")
     if not f then return msg.error('failed to open file ', name) end
@@ -101,7 +107,11 @@ mp.observe_property('display-names', 'native', function(_, display_names)
         load_display_info()
     end
 
-    local name = displays[display]['Monitor Name'] or 'unknown'
+    local name = 'unknown'
+    if displays and displays[display] then
+        name = displays[display]['Monitor Name'] or name
+    end
+
     utils.shared_script_property_set('display_name', name)
 end)
 
