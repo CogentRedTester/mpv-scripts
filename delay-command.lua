@@ -18,8 +18,7 @@
     Note that these two different syntaxes use different mpv API calls. The 1st
     syntax uses the same call as a normal input.conf command, the 2nd uses the
     mp.commandv API call, which has slightly different behaviour. For example
-    the input.conf commands always try to print messages to the OSD, but
-    mp.commandv() does not.
+    the input.conf commands allow you to use semicolons to send multiple commands at once.
 ]]
 
 local mp = require "mp"
@@ -41,7 +40,7 @@ local function main(delay, ...)
             mp.command(command[1])
         else
             msg.debug('running command: "'..table.concat(command, '" "')..'"')
-            mp.commandv(unpack(command))
+            mp.commandv('osd-auto', unpack(command))
         end
     end)
 end
