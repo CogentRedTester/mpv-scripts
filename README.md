@@ -22,7 +22,7 @@ Requires [scroll-list](#scroll-list)
 
 ## command-timeout
 
-Sends an input command after a specified delay
+Sends an input command after a specified delay. I suggest using the newer `delay-command.lua` instead. This script is deprecated.
 
 ## [coverart](https://github.com/CogentRedTester/mpv-coverart)
 

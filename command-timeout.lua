@@ -12,6 +12,9 @@
     timer is reset without sending the command.
 
     available at: https://github.com/CogentRedTester/mpv-scripts
+
+    This script is no-longer supported, I hghly suggest using delay-command.lua instead:
+    https://github.com/CogentRedTester/mpv-scripts/blob/master/delay-command.lua
 ]]--
 
 local mp = require 'mp'
