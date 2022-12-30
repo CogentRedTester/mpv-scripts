@@ -17,8 +17,7 @@
 
     Note that these two different syntaxes use different mpv API calls. The 1st
     syntax uses the same call as a normal input.conf command, the 2nd uses the
-    mp.commandv API call, which has slightly different behaviour. For example
-    the input.conf commands allow you to use semicolons to send multiple commands at once.
+    mp.commandv API call, which might cause slightly different behaviour.
 ]]
 
 local mp = require "mp"
