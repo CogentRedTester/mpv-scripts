@@ -286,7 +286,7 @@ end
 
 local function search(query)
     local response = search_request(get_search_queries(query, o.invidious), o.API_path, o.invidious)
-    if not response and o.fallback_API_path ~= "" then
+    if not response and o.fallback_API_path ~= "/" then
         msg.info("search failed - attempting fallback")
         response = search_request(get_search_queries(query, o.fallback_invidious), o.fallback_API_path, o.fallback_invidious)
     end
