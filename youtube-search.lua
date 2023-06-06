@@ -187,10 +187,18 @@ local function send_request(type, queries, API_path)
     })
 
     local response = utils.parse_json(request.stdout)
-    msg.trace(utils.to_string(response))
-    if request.status ~= 0 then msg.error(request.stderr) ; return nil end
+    msg.trace(utils.to_string(request))
+
+    if request.status ~= 0 then
+        msg.error(request.stderr)
+        return nil
+    end
     if not response then
         msg.error("Could not parse response:")
+        msg.error(request.stdout)
+        return nil
+    end
+    if response.error then
         msg.error(request.stdout)
         return nil
     end
