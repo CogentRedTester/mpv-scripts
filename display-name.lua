@@ -42,7 +42,8 @@ end
 
 -- creates an iterator for cells in a csv row
 local function csv_iter(str)
-    str = str:gsub('".-"', function(substr) return substr:gsub(', ', 'x'):gsub(',', ' ') end)
+    -- cleans up cells that are wrappen in brackets
+    str = str:gsub('".-"', function(substr) return substr:gsub(', ', 'x'):gsub(',', ' '):sub(2, -2) end)
     return string.gmatch(str, '[^,\n\r]+')
 end
 
