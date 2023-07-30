@@ -48,8 +48,8 @@ Automatically applies profiles when the mpv window is moved to a new display
 ## display-name
 
 A simple script designed for windows that saves the name of the monitor that mpv is using into
-the `display_name` `shared_script_properties` field. This means that one can use conditional
-auto profiles with the name of the monitor.
+the `display_name` field of the `shared_script_properties` and `user-data` properties.
+This means that one can use conditional auto profiles with the name of the monitor.
 This is necessary on windows because the default display names that mpv uses
 are in the form `\\.\DISPLAY#`, which are completely useless for setting persistent profiles
 as the numbers can change between boots or display configurations.
