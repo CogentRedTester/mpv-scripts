@@ -1,17 +1,19 @@
 --[[
-    A simple script designed for windows that saves the name of the monitor that mpv is using into
-    the `display_name` `shared_script_properties` field. This means that one can use conditional
-    auto profiles with the name of the monitor:
-
-    Use `mpv --idle=once --script-opts=display_names=yes` to get a list of display names.
+    A simple script designed for Windows that saves the name of the monitor that mpv is using into
+    the `display_name` field of the `shared_script_properties` and `user-data` properties.
+    The `user-data` property should be preferred, but was only made available in mpv v0.36.
+    
+    This means that one can use conditional auto profiles with the name of the monitor:
 
     [PC]
-    profile-cond=shared_script_properties['display_name'] ~= 'SAMSUNG'
+    profile-cond= shared_script_properties['display_name'] ~= 'SAMSUNG' or user_data.display_name ~= 'SAMSUNG'
     script-opts-append=changerefresh-auto=no
 
     [TV]
-    profile-cond=shared_script_properties['display_name'] == 'SAMSUNG'
+    profile-cond= shared_script_properties['display_name'] == 'SAMSUNG' or user_data.display_name == 'SAMSUNG'
     script-opts-append=changerefresh-auto=yes
+
+    Run `mpv --idle=once --script-opts=display_names=yes` to get a list of names for the current displays.
 
     This is necessary on windows because the default display names that mpv uses
     are in the form \\.\DISPLAY#, which are completely useless for setting persistent profiles
@@ -50,6 +52,7 @@ end
 -- loads the display information into the displays table
 local function load_display_info()
     local name = get_temp_file_name()
+
     local cmd = mp.command_native({
         name = 'subprocess',
         playback_only = false,
@@ -113,10 +116,7 @@ mp.observe_property('display-names', 'native', function(_, display_names)
     end
 
     local name = 'unknown'
-    if displays and displays[display] then
-        name = displays[display]['Monitor Name'] or name
-    end
-
+    if displays and displays[display] then name = displays[display]['Monitor Name'] or name end
     utils.shared_script_property_set('display_name', name)
     mp.set_property('user-data/display_name', name)
 end)
