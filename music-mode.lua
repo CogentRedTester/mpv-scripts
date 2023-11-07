@@ -48,7 +48,7 @@ local o = {
 }
 
 opt.read_options(o, 'musicmode', function() msg.verbose('options updated') end)
-utils.shared_script_property_set("musicmode-active", o.enable and "yes" or "no")
+mp.set_property_bool('user-data/music_mode/active', o.enable)
 
 --a music file is one where mpv returns an audio stream or coverart as the first track
 local function is_audio_file()
@@ -105,7 +105,7 @@ local function activate()
     if o.profile ~= "" then mp.commandv('apply-profile', o.profile) end
     mp.commandv('enable-section', o.input_section, "allow-vo-dragging+allow-hide-cursor")
     mp.osd_message('Music Mode enabled')
-    utils.shared_script_property_set("musicmode-active", "yes")
+    mp.set_property_bool('user-data/music_mode/active', true)
 
     if o.show_metadata then
         show_metadata("on")
@@ -119,7 +119,7 @@ local function deactivate()
     if o.undo_profile ~= "" then mp.commandv('apply-profile', o.undo_profile) end
     mp.commandv('disable-section', o.input_section)
     mp.osd_message('Music Mode disabled')
-    utils.shared_script_property_set("musicmode-active", "no")
+    mp.set_property_bool('user-data/music_mode/active', false)
 
     if o.show_metadata then
         show_metadata('off')
