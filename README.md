@@ -152,6 +152,10 @@ Allows you to apply a profile with a timeout, after which another profile is cal
 An API to allow scripts to request text input from the user over the OSD.
 The script is built around a modified version of mpv's console.lua, so supports almost all the same keybinds.
 
+## [user-data-loader](https://github.com/CogentRedTester/mpv-user-data-loader/tree/master)
+
+A script that allows the mpv `user-data` property to be set at launch and runtime using config files and `script-opts`.
+
 ## vars
 
 This script allows users to set custom variables which can be used in commands and profiles.
