@@ -14,9 +14,11 @@
     You can disable the automatic stuff and use script messages to load/save playlists as well
 
     script-message save-session [session-file]
-    script-message reload-session [session-file]
+    script-message reload-session [session-file] [load_playlist]
 
-    If not included `session-file` will use the default file specified in script-opts
+    If not included `session-file` will use the default file specified in script-opts.
+    `load_playlist` controls whether the whole playlist should be restored or just the one file,
+    the value can be `yes` or `no`. If not included it defaults to the value of the `load_playlist` script opt.
 
     available at: https://github.com/CogentRedTester/mpv-scripts
 ]]--
@@ -27,17 +29,22 @@ local opt = require 'mp.options'
 local msg = require 'mp.msg'
 
 local o = {
-    --disables the script from automatically saving the prev session
+    --automatically save the prev session
     auto_save = true,
 
     --runs the script automatically when started in idle mode and no files are in the playlist
     auto_load = true,
+
+    --reloads the full playlist from the previous session
+    --can be individually overwritten when sending script-messages
+    load_playlist = true,
 
     --file path of the default session file
     --save it as a .pls file to be able to open directly (though it will not maintain the playlist positions)
     session_file = "",
 
     --maintain position in the playlist
+    --does nothing if load_playlist is disabled
     maintain_pos = true,
 }
 
@@ -88,8 +95,12 @@ local function save_playlist(file)
 end
 
 --turns the previous json string into a table and adds all the files to the playlist
-local function load_prev_session(file)
-    if not file then file = save_file end
+local function load_prev_session(file, load_playlist)
+    if not file or file == '' then file = save_file end
+
+    if load_playlist == 'yes' then load_playlist = true
+    elseif load_playlist == 'no' then load_playlist = false
+    else load_playlist = o.load_playlist end
 
     --loads the previous session file
     msg.verbose('loading previous session from', file)
@@ -102,14 +113,25 @@ local function load_prev_session(file)
         return
     end
 
-    if o.maintain_pos then
-        local previous_playlist_pos = session:read()
-        msg.verbose("restoring playlist position", previous_playlist_pos)
-        mp.set_property('file-local-options/playlist-start', previous_playlist_pos)
+    local previous_playlist_pos = session:read('*n')
+
+    if load_playlist then
+        msg.debug('reloading playlist')
+        if o.maintain_pos then
+            msg.verbose("restoring playlist position", previous_playlist_pos)
+            mp.set_property('file-local-options/playlist-start', previous_playlist_pos)
+        end
+        mp.commandv('loadlist', file)
+    else
+        msg.debug('discarding playlist')
+        local files = {}
+        for line in session:lines() do
+            table.insert(files, string.match(line, 'File=(.+)'))
+        end
+        mp.commandv('loadfile', files[previous_playlist_pos])
     end
 
     session:close()
-    mp.commandv('loadlist', file)
 end
 
 local function shutdown()
