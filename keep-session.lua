@@ -102,18 +102,14 @@ local function load_prev_session(file)
         return
     end
 
-    local previous_playlist_pos
-    local pl_start
     if o.maintain_pos then
-        previous_playlist_pos = session:read()
+        local previous_playlist_pos = session:read()
         msg.verbose("restoring playlist position", previous_playlist_pos)
-        pl_start = mp.get_property('playlist-start')
-        mp.set_property('playlist-start', previous_playlist_pos)
+        mp.set_property('file-local-options/playlist-start', previous_playlist_pos)
     end
 
     session:close()
     mp.commandv('loadlist', file)
-    if o.maintain_pos then mp.set_property('playlist-start', pl_start) end
 end
 
 local function shutdown()
