@@ -110,6 +110,7 @@ local function load_prev_session(file, load_playlist)
     --or if someone manually deletes the previous session file
     if session == nil or session:read() ~= "[playlist]" then
         msg.verbose('no previous session, cancelling load')
+        if session then session:close() end
         return
     end
 
