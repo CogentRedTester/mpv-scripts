@@ -53,7 +53,7 @@ opt.read_options(o, 'keep_session', function() end)
 --sets the default session file to the watch_later directory or ~~/watch_later/
 if o.session_file == "" then
     local watch_later = mp.get_property('watch-later-directory', "")
-    if watch_later == "" then watch_later = "~~/watch_later/" end
+    if watch_later == "" then watch_later = "~~state/watch_later/" end
     if not watch_later:find("[/\\]$") then watch_later = watch_later..'/' end
 
     o.session_file = watch_later.."prev-session"
