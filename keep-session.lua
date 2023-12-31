@@ -128,7 +128,9 @@ local function load_prev_session(file, load_playlist)
         for line in session:lines() do
             table.insert(files, string.match(line, 'File=(.+)'))
         end
-        mp.commandv('loadfile', files[previous_playlist_pos])
+
+        -- mpv and keep-session uses 0 based array indices, but lua uses 1-based
+        mp.commandv('loadfile', files[previous_playlist_pos+1])
     end
 
     session:close()
