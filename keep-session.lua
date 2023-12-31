@@ -117,11 +117,21 @@ local function load_prev_session(file, load_playlist)
 
     if load_playlist then
         msg.debug('reloading playlist')
-        if o.maintain_pos then
+
+        if not o.maintain_pos then
+            mp.commandv('loadlist', file)
+        else
+            local prev_playlist_start = mp.get_property('playlist-start')
             msg.verbose("restoring playlist position", previous_playlist_pos)
-            mp.set_property('file-local-options/playlist-start', previous_playlist_pos)
+            mp.set_property_number('playlist-start', previous_playlist_pos)
+
+            mp.commandv('loadlist', file)
+
+            -- restore the original value unless the `playlist-start` property has been otherwise modified
+            if mp.get_property_number('playlist-start') ~= previous_playlist_pos then
+                mp.set_property('playlist-start', prev_playlist_start)
+            end
         end
-        mp.commandv('loadlist', file)
     else
         msg.debug('discarding playlist')
         local files = {}
