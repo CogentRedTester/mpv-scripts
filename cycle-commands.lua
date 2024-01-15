@@ -55,7 +55,7 @@ local function main(osd, ...)
     if reverse then table.remove(commands, 1) end
 
     --to identify the specific cycle we'll concatenate all the strings together to use as our table key
-    local str = table.concat(commands, " | ")
+    local str = ("%d> %s"):format(#commands, table.concat(commands, '|'))
     msg.trace('recieved:', str)
 
     -- we'll initialise the iterator at 0 (an invalid position) to support forward or backwards iteration
