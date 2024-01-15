@@ -1,4 +1,4 @@
---[=====[
+--[[
     script to cycle commands with a keybind, accomplished through script messages
     available at: https://github.com/CogentRedTester/mpv-scripts
 
@@ -33,13 +33,13 @@
     Most commands should print messages to the OSD automatically, this can be controlled
     by adding input prefixes to the commands: https://mpv.io/manual/master/#input-command-prefixes.
     Some commands will not print an osd message even when told to, in this case you have two options:
-    you can add a show-text command to the cycle, or you can use the cycle-command/osd script message
+    you can add a show-text command to the cycle, or you can use the cycle-commands/osd script message
     which will print the command string to the osd. For example:
         script-message cycle-commands 'apply-profile profile1;show-text "applying profile1"' 'apply-profile profile2;show-text "applying profile2"'
         script-message cycle-commands/osd 'apply-profile profile1' 'apply-profile profile2'
 
-    Any osd messages printed by the command will override the message sent by cycle-command/osd.
-]=====]--
+    Any osd messages printed by the command will override the message sent by cycle-commands/osd.
+]]--
 
 local mp = require 'mp'
 local msg = require 'mp.msg'
