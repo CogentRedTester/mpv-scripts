@@ -57,11 +57,13 @@ local function main(...)
     local prevProfile = profiles[prev_iterator]
     local newProfile = profiles[iterators[key]]
 
+    -- restore the previous profile
     if prev_iterator and profile_map[prevProfile] and profile_map[prevProfile]['profile-restore'] then
         msg.info('restoring profile', prevProfile)
         mp.commandv('apply-profile', prevProfile, 'restore')
     end
 
+    -- abort if the new profile is an empty string
     if newProfile == '' then
         mp.osd_message('restoring profiles')
         return
