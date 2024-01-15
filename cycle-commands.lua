@@ -3,11 +3,11 @@
     available at: https://github.com/CogentRedTester/mpv-scripts
 
     syntax:
-        script-message cycle-commands "command1" "command2" "command3"
+        script-message cycle-commands "command1 args" "command2 args" "command3 args"
 
     The syntax of each command is identical to the standard input.conf syntax, but each command must be
-    a single quoted string. Note that this may require you to nest (and potentially escape) quotes,
-    read the mpv documentation for how to do this: https://mpv.io/manual/master/#flat-command-syntax.
+    a quoted string. Note that this may require you to nest (and potentially escape) quotes for the arguments.
+    Read the mpv documentation for how to do this: https://mpv.io/manual/master/#flat-command-syntax.
 
     Semicolons also work exactly like they do normally, so you can easily send multiple commands each cycle.
 
@@ -22,10 +22,10 @@
 
     There are no limits to the number of commands, and the script message can be used as often as one wants,
     the script stores the current iteration for each unique cycle command, so there should be no overlap
-    unless one binds the exact same command string (including spacing).
+    unless one binds the exact same set of command strings (including spacing).
 
     Most commands should print messages to the OSD automatically, this can be controlled
-    by adding input prefixes before the commands: https://mpv.io/manual/master/#input-command-prefixes.
+    by adding input prefixes to the commands: https://mpv.io/manual/master/#input-command-prefixes.
     Some commands will not print an osd message even when told to, in this case you have two options:
     you can add a show-text command to the cycle, or you can use the cycle-command/osd script message
     which will print the command string to the osd. For example:
