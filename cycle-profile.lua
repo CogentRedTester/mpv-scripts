@@ -6,8 +6,13 @@
         script-message cycle-profiles profile1 profile2 "profile 3"
 
     You must put the name of the profile in quotes if it contains special characters like spaces.
+
     The script will print the profile description to the screen when switching,
     if there is no profile description, then it just prints the name.
+    You can disable osd messages with the `cycle_profiles-osd` script opt,
+    and you can force whether or not to show the osd messages by using:
+        script-message cycle-profiles/osd profile1 profile2
+        script-message cycle-profiles/no_osd profile1 profile2
 
     If the `profile-restore` option is set on a profile, then cycling
     off that profile will run the restore operation.
@@ -20,8 +25,27 @@
     been applied in any other manner.
 ]]--
 
+local o = {
+    -- print messages to the osd when cycling profiles
+    osd = true,
+
+    -- prefer the profile-desc string over the profile name
+    -- when printing osd messages
+    prefer_description = true,
+
+    -- the format string to use for the osd message
+    -- see: https://www.lua.org/manual/5.1/manual.html#pdf-string.format
+    osd_format_string = "%s",
+
+    -- the string to show when applying an empty profile ("")
+    osd_empty_string = "restoring profiles"
+}
+
 local mp = require 'mp'
 local msg = require 'mp.msg'
+local opts = require 'mp.options'
+
+opts.read_options(o, 'cycle_profiles')
 
 --table of all available profiles and options
 local profile_map = {}
@@ -37,7 +61,7 @@ local function setup_profile_list()
     end
 end
 
-local function main(...)
+local function main(osd, ...)
     local profiles = {...}
     local key = table.concat(profiles, ';')
     local prev_iterator = iterators[key]
@@ -65,7 +89,7 @@ local function main(...)
 
     -- abort if the new profile is an empty string
     if newProfile == '' then
-        mp.osd_message('restoring profiles')
+        if osd then mp.osd_message(o.osd_empty_string) end
         return
     end
 
@@ -74,10 +98,11 @@ local function main(...)
     mp.commandv('apply-profile', newProfile)
 
     --prints the profile description to the OSD
-    local desc = profile_map[newProfile]['profile-desc'] or newProfile
-    msg.verbose('profile description:', desc)
-    mp.osd_message(desc)
+    local desc = o.prefer_description and profile_map[newProfile]['profile-desc'] or newProfile
+    if osd then mp.osd_message(o.osd_format_string:format(desc)) end
 end
 
 setup_profile_list()
-mp.register_script_message('cycle-profiles', main)
+mp.register_script_message('cycle-profiles', function(...) main(o.osd, ...) end)
+mp.register_script_message('cycle-profiles/osd', function(...) main(true, ...) end)
+mp.register_script_message('cycle-profiles/no_osd', function(...) main(false, ...) end)
