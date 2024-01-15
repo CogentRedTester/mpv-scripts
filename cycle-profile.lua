@@ -3,10 +3,21 @@
     available at: https://github.com/CogentRedTester/mpv-scripts
 
     syntax:
-        script-message cycle-profiles "profile1;profile2;profile3"
+        script-message cycle-profiles profile1 profile2 "profile 3"
 
-    You must use semicolons to separate the profiles, do not include any spaces that are not part of the profile name.
-    The script will print the profile description to the screen when switching, if there is no profile description, then it just prints the name
+    You must put the name of the profile in quotes if it contains special characters like spaces.
+    The script will print the profile description to the screen when switching,
+    if there is no profile description, then it just prints the name.
+
+    If the `profile-restore` option is set on a profile, then cycling
+    off that profile will run the restore operation.
+    Cycling to an empty profile ("") will restore the previous profile
+    without enabling a new one, so to toggle a profile you can do:
+
+        script-message cycle-profiles profile1 ""
+    
+    Note that the script will not detect if a profile has already
+    been applied in any other manner.
 ]]--
 
 local mp = require 'mp'
