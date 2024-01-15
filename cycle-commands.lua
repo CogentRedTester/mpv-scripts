@@ -23,6 +23,16 @@
     There are no limits to the number of commands, and the script message can be used as often as one wants,
     the script stores the current iteration for each unique cycle command, so there should be no overlap
     unless one binds the exact same command string (including spacing).
+
+    Most commands should print messages to the OSD automatically, this can be controlled
+    by adding input prefixes before the commands: https://mpv.io/manual/master/#input-command-prefixes.
+    Some commands will not print an osd message even when told to, in this case you have two options:
+    you can add a show-text command to the cycle, or you can use the cycle-command/osd script message
+    which will print the command string to the osd. For example:
+        script-message cycle-commands 'apply-profile profile1;show-text "applying profile1"' 'apply-profile profile2;show-text "applying profile2"'
+        script-message cycle-commands/osd 'apply-profile profile1' 'apply-profile profile2'
+
+    Any osd messages printed by the command will override the message sent by cycle-command/osd.
 ]=====]--
 
 local mp = require 'mp'
@@ -32,7 +42,7 @@ local msg = require 'mp.msg'
 local iterators = {}
 
 --main function to identify and run the cycles
-local function main(...)
+local function main(osd, ...)
     local commands = {...}
 
     --to identify the specific cycle we'll concatenate all the strings together to use as our table key
@@ -51,7 +61,9 @@ local function main(...)
     --This should provide universal support for all input.conf command syntax
     local cmd = commands[ iterators[str] ]
     msg.verbose('sending command:', cmd)
+    if osd then mp.osd_message(cmd) end
     mp.command(cmd)
 end
 
-mp.register_script_message('cycle-commands', main)
+mp.register_script_message('cycle-commands', function(...) main(false, ...) end)
+mp.register_script_message('cycle-commands/osd', function(...) main(true, ...) end)
