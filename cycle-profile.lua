@@ -10,13 +10,14 @@
 ]]--
 
 --change this to change what character separates the profile names
-seperator = ";"
+local seperator = ";"
 
-msg = require 'mp.msg'
+local mp = require 'mp'
+local msg = require 'mp.msg'
 
 --splits the profiles string into an array of profile names
 --function taken from: https://stackoverflow.com/questions/1426954/split-string-in-lua/7615129#7615129
-function mysplit (inputstr, sep)
+local function mysplit (inputstr, sep)
     if sep == nil then
             sep = "%s"
     end
@@ -28,24 +29,24 @@ function mysplit (inputstr, sep)
 end
 
 --table of all available profiles and options
-profileList = mp.get_property_native('profile-list')
+local profileList = mp.get_property_native('profile-list')
 
 --keeps track of current profile for every unique cycle
-iterator = {}
+local iterator = {}
 
 --stores descriptions for profiles
 --once requested a description is stored here so it does not need to be found again
-profilesDescs = {}
+local profilesDescs = {}
 
 --if trying to cycle to an unknown profile this function is run to find a description to print
-function findDesc(profile)
+local function findDesc(profile)
     msg.verbose('unknown profile ' .. profile .. ', searching for description')
 
     for i = 1, #profileList, 1 do
         if profileList[i]['name'] == profile then
             msg.verbose('profile found')
             local desc = profileList[i]['profile-desc']
-            
+
             if desc ~= nil then
                 msg.verbose('description found')
                 profilesDescs[profile] = desc
@@ -63,7 +64,7 @@ end
 
 --prints the profile description to the OSD
 --if the profile has not been requested before during the session then it runs findDesc()
-function printProfileDesc(profile)
+local function printProfileDesc(profile)
     local desc = profilesDescs[profile]
     if desc == nil then
         findDesc(profile)
@@ -74,7 +75,7 @@ function printProfileDesc(profile)
     mp.osd_message(desc)
 end
 
-function main(profileStr)
+local function main(profileStr)
     --if there is not already an iterator for this cycle then it creates one
     if iterator[profileStr] == nil then
         msg.verbose('unknown cycle, creating new iterator')
