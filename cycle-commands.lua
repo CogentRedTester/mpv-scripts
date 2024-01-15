@@ -20,9 +20,15 @@
     and on keypress two 'three four' would be printed to the OSD.
     Note that single (') and backtick (`) quoting was only added in mpv v0.34.
 
-    There are no limits to the number of commands, and the script message can be used as often as one wants,
-    the script stores the current iteration for each unique cycle command, so there should be no overlap
-    unless one binds the exact same set of command strings (including spacing).
+    There are no limits to the number of commands, and the script message can be used as often as one wants.
+    The script stores the current iteration position for each unique set of command strings,
+    so there should be no overlap unless one binds the exact same set of strings (including spacing).
+
+    If the first command is `!reverse`, then the commands are cycled in the opposite direction.
+    If every subsequent command string is identical to a non-reversed cycle, then they share
+    their iteration position, making it possible to 'seek' forwards or backwards in the cycle:
+        script-message cycle-commands 'apply-profile profile1' 'apply-profile profile2' 'apply-profile profile3'
+        script-message cycle-commands !reverse 'apply-profile profile1' 'apply-profile profile2' 'apply-profile profile3'
 
     Most commands should print messages to the OSD automatically, this can be controlled
     by adding input prefixes to the commands: https://mpv.io/manual/master/#input-command-prefixes.
@@ -45,17 +51,22 @@ local iterators = {}
 local function main(osd, ...)
     local commands = {...}
 
+    local reverse = commands[1] == '!reverse'
+    if reverse then table.remove(commands, 1) end
+
     --to identify the specific cycle we'll concatenate all the strings together to use as our table key
     local str = table.concat(commands, " | ")
     msg.trace('recieved:', str)
 
+    -- we'll initialise the iterator at 0 (an invalid position) to support forward or backwards iteration
     if iterators[str] == nil then
         msg.debug('unknown cycle, creating iterator')
-        iterators[str] = 1
-    else
-        iterators[str] = iterators[str] + 1
-        if iterators[str] > #commands then iterators[str] = 1 end
+        iterators[str] = 0
     end
+
+    iterators[str] = iterators[str] + (reverse and -1 or 1)
+    if iterators[str] > #commands then iterators[str] = 1 end
+    if iterators[str] < 1 then iterators[str] = #commands end
 
     --mp.command should run the commands exactly as if they were entered in input.conf.
     --This should provide universal support for all input.conf command syntax
