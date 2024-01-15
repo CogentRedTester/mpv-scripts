@@ -13,80 +13,58 @@ local mp = require 'mp'
 local msg = require 'mp.msg'
 
 --table of all available profiles and options
-local profileList = mp.get_property_native('profile-list')
+local profile_map = {}
 
 --keeps track of current profile for every unique cycle
-local iterator = {}
+local iterators = {}
 
---stores descriptions for profiles
---once requested a description is stored here so it does not need to be found again
-local profilesDescs = {}
+local function setup_profile_list()
+    local profile_list = mp.get_property_native('profile-list', {})
 
---if trying to cycle to an unknown profile this function is run to find a description to print
-local function findDesc(profile)
-    msg.verbose('unknown profile ' .. profile .. ', searching for description')
-
-    for i = 1, #profileList, 1 do
-        if profileList[i]['name'] == profile then
-            msg.verbose('profile found')
-            local desc = profileList[i]['profile-desc']
-
-            if desc ~= nil then
-                msg.verbose('description found')
-                profilesDescs[profile] = desc
-            else
-                msg.verbose('no description, will use name')
-                profilesDescs[profile] = profile
-            end
-            return
-        end
+    for _, profile in ipairs(profile_list) do
+        profile_map[profile.name] = profile
     end
-
-    msg.verbose('profile not found')
-    profilesDescs[profile] = "no profile '" .. profile .. "'"
-end
-
---prints the profile description to the OSD
---if the profile has not been requested before during the session then it runs findDesc()
-local function printProfileDesc(profile)
-    local desc = profilesDescs[profile]
-    if desc == nil then
-        findDesc(profile)
-        desc = profilesDescs[profile]
-    end
-
-    msg.verbose('profile description: ' .. desc)
-    mp.osd_message(desc)
 end
 
 local function main(...)
     local profiles = {...}
-    local profileStr = table.concat(profiles, ';')
+    local key = table.concat(profiles, ';')
+    local prev_iterator = iterators[key]
 
-    --if there is not already an iterator for this cycle then it creates one
-    if iterator[profileStr] == nil then
-        msg.verbose('unknown cycle, creating new iterator')
-        iterator[profileStr] = 1
+    if iterators[key] == nil then
+        msg.debug('unknown cycle, creating iterator')
+        iterators[key] = 1
+    else
+        iterators[key] = iterators[key] + 1
+        if iterators[key] > #profiles then iterators[key] = 1 end
     end
-    local i = iterator[profileStr]
 
     --converts the string into an array of profile names
     msg.verbose('cycling ' .. tostring(profiles))
     msg.verbose("number of profiles: " .. tostring(#profiles))
 
+    local prevProfile = profiles[prev_iterator]
+    local newProfile = profiles[iterators[key]]
+
+    if prev_iterator and profile_map[prevProfile] and profile_map[prevProfile]['profile-restore'] then
+        msg.info('restoring profile', prevProfile)
+        mp.commandv('apply-profile', prevProfile, 'restore')
+    end
+
+    if newProfile == '' then
+        mp.osd_message('restoring profiles')
+        return
+    end
+
     --sends the command to apply the profile
-    msg.info("applying profile " .. profiles[i])
-    mp.commandv('apply-profile', profiles[i])
+    msg.info("applying profile", newProfile)
+    mp.commandv('apply-profile', newProfile)
 
     --prints the profile description to the OSD
-    printProfileDesc(profiles[i])
-
-    --moves the iterator
-    iterator[profileStr] = iterator[profileStr] + 1
-    if iterator[profileStr] > #profiles then
-        msg.verbose('reached end of profiles, wrapping back to start')
-        iterator[profileStr] = 1
-    end
+    local desc = profile_map[newProfile]['profile-desc'] or newProfile
+    msg.verbose('profile description:', desc)
+    mp.osd_message(desc)
 end
 
+setup_profile_list()
 mp.register_script_message('cycle-profiles', main)
