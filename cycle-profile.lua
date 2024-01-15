@@ -9,24 +9,8 @@
     The script will print the profile description to the screen when switching, if there is no profile description, then it just prints the name
 ]]--
 
---change this to change what character separates the profile names
-local seperator = ";"
-
 local mp = require 'mp'
 local msg = require 'mp.msg'
-
---splits the profiles string into an array of profile names
---function taken from: https://stackoverflow.com/questions/1426954/split-string-in-lua/7615129#7615129
-local function mysplit (inputstr, sep)
-    if sep == nil then
-            sep = "%s"
-    end
-    local t={}
-    for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
-            table.insert(t, str)
-    end
-    return t
-end
 
 --table of all available profiles and options
 local profileList = mp.get_property_native('profile-list')
@@ -75,7 +59,10 @@ local function printProfileDesc(profile)
     mp.osd_message(desc)
 end
 
-local function main(profileStr)
+local function main(...)
+    local profiles = {...}
+    local profileStr = table.concat(profiles, ';')
+
     --if there is not already an iterator for this cycle then it creates one
     if iterator[profileStr] == nil then
         msg.verbose('unknown cycle, creating new iterator')
@@ -84,7 +71,6 @@ local function main(profileStr)
     local i = iterator[profileStr]
 
     --converts the string into an array of profile names
-    local profiles = mysplit(profileStr, seperator)
     msg.verbose('cycling ' .. tostring(profiles))
     msg.verbose("number of profiles: " .. tostring(#profiles))
 
