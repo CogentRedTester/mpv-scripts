@@ -35,10 +35,10 @@ local o = {
 
     -- the format string to use for the osd message
     -- see: https://www.lua.org/manual/5.1/manual.html#pdf-string.format
-    osd_format_string = "%s",
+    osd_format_string = '%s',
 
     -- the string to show when applying an empty profile ("")
-    osd_empty_string = "restoring profiles"
+    osd_empty_string = 'restoring profiles'
 }
 
 local mp = require 'mp'
@@ -75,30 +75,30 @@ local function main(osd, ...)
     end
 
     --converts the string into an array of profile names
-    msg.verbose('cycling ' .. tostring(profiles))
-    msg.verbose("number of profiles: " .. tostring(#profiles))
+    msg.verbose('cycling', key)
+    msg.verbose('number of profiles:', #profiles)
 
-    local prevProfile = profiles[prev_iterator]
-    local newProfile = profiles[iterators[key]]
+    local prev_profile = profiles[prev_iterator]
+    local new_profile = profiles[iterators[key]]
 
     -- restore the previous profile
-    if prev_iterator and profile_map[prevProfile] and profile_map[prevProfile]['profile-restore'] then
-        msg.info('restoring profile', prevProfile)
-        mp.commandv('apply-profile', prevProfile, 'restore')
+    if prev_iterator and profile_map[prev_profile] and profile_map[prev_profile]['profile-restore'] then
+        msg.info('restoring profile', prev_profile)
+        mp.commandv('apply-profile', prev_profile, 'restore')
     end
 
     -- abort if the new profile is an empty string
-    if newProfile == '' then
+    if new_profile == '' then
         if osd then mp.osd_message(o.osd_empty_string) end
         return
     end
 
     --sends the command to apply the profile
-    msg.info("applying profile", newProfile)
-    mp.commandv('apply-profile', newProfile)
+    msg.info('applying profile', new_profile)
+    mp.commandv('apply-profile', new_profile)
 
     --prints the profile description to the OSD
-    local desc = o.prefer_description and profile_map[newProfile]['profile-desc'] or newProfile
+    local desc = o.prefer_description and profile_map[new_profile]['profile-desc'] or new_profile
     if osd then mp.osd_message(o.osd_format_string:format(desc)) end
 end
 
