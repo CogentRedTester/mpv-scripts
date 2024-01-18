@@ -93,6 +93,13 @@ local function main(osd, ...)
         return
     end
 
+    -- abort if the new profile is unknown
+    if not profile_map[new_profile] then
+        msg.error('tried to enable unknown profile "'..new_profile..'"')
+        mp.osd_message('unknown profile: '..new_profile)
+        return
+    end
+
     --sends the command to apply the profile
     msg.info('applying profile', new_profile)
     mp.commandv('apply-profile', new_profile)
