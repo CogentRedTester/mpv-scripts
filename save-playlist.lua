@@ -31,6 +31,14 @@ local working = mp.get_property("working-directory", "")
 local function save_playlist(directory, name, relative)
     if not directory or not name then return end
     directory = mp.command_native({"expand-path", directory})
+
+    if string.len(directory) == 0 then
+        directory = utils.getcwd()
+    end
+    if string.len(name) == 0 then
+        name = os.time(os.date("!*t"))
+    end
+
     local path = directory.."/"..name..".m3u"
     local file = io.open(path, "w")
     if not file then msg.error("could not open file '"..path.."' for writing") ; return end
