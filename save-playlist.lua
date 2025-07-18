@@ -36,7 +36,7 @@ local function save_playlist(directory, name, relative)
         directory = working
     end
     if string.len(name) == 0 then
-        name = os.time(os.date("!*t"))
+        name = 'untitled-playlist-'..os.time(os.date("!*t"))
     end
 
     local path = directory.."/"..name..".m3u"
