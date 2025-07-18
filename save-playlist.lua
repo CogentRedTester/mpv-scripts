@@ -33,7 +33,7 @@ local function save_playlist(directory, name, relative)
     directory = mp.command_native({"expand-path", directory})
 
     if string.len(directory) == 0 then
-        directory = utils.getcwd()
+        directory = working
     end
     if string.len(name) == 0 then
         name = os.time(os.date("!*t"))
