@@ -2,18 +2,13 @@
     This script allows users to search and open youtube results from within mpv using yt-dlp.
     Available at: https://github.com/CogentRedTester/mpv-scripts
 
-    Users can open the search page with Y, and use Y again to open a search.
+    The Y button opens the latest page of search results (or prompts for input
+    if nothing has yet been searched).
+    The search page has an entry to do a new search.
     Alternatively, Ctrl+y can be used at any time to open a search.
     Esc can be used to close the page.
-    Enter will open the selected item, Shift+Enter will append the item to the playlist.
-
-    This script requires that my other scripts `scroll-list` be installed.
-    scroll-list.lua and user-input-module.lua must be in the ~~/script-modules/ directory,
-    while user-input.lua should be loaded by mpv normally.
 
     yt-dlp must also be available in the system path
-
-    https://github.com/CogentRedTester/mpv-scroll-list
 ]]--
 
 local mp = require "mp"
@@ -21,9 +16,6 @@ local msg = require "mp.msg"
 local utils = require "mp.utils"
 local opts = require "mp.options"
 local input = require 'mp.input'
-
-package.path = mp.command_native({"expand-path", "~~/script-modules/?.lua;"}) .. package.path
-local list = require "scroll-list"
 
 local o = {
     --Number of search results to show in the list.
@@ -50,17 +42,27 @@ end
 
 format_options()
 
-list.header = ("%s Search: \\N-------------------------------------------------"):format(o.invidious and "Invidious" or "Youtube")
-list.num_entries = 17
-list.list_style = [[{\fs10}\N{\q2\fs25\c&Hffffff&}]]
-list.empty_text = "enter search query"
+---@class SearchResult
+---@field id string
+---@field type 'video'|'playlist'|'channel'
+---@field title string
+---@field channelTitle string
+---@field url string
 
-local ass_escape = list.ass_escape
+---@class LatestSearch
+---@field latest_results SearchResult[]
+---@field query string
 
---encodes a string so that it uses url percent encoding
---this function is based on code taken from here: https://rosettacode.org/wiki/URL_encoding#Lua
+---@type LatestSearch|nil
+local latest_search = nil
+
+local selection_open = false
+
+---encodes a string so that it uses url percent encoding
+---this function is based on code taken from here: https://rosettacode.org/wiki/URL_encoding#Lua
+---@param str string
+---@return string
 local function encode_string(str)
-    if type(str) ~= "string" then return str end
 	local output, t = str:gsub("[^%w]", function(char)
         return string.format("%%%X",string.byte(char))
     end)
@@ -83,6 +85,8 @@ local function json_parse_iterate(str)
     return t
 end
 
+---@param query string
+---@return table[]|nil
 local function search_ytdlp(query)
     local req = mp.command_native({
         name = 'subprocess',
@@ -108,12 +112,6 @@ local function search_ytdlp(query)
     return results
 end
 
----@class SearchResult
----@field id string
----@field type 'video'|'playlist'|'channel'
----@field title string
----@field channelTitle string
-
 ---@param results table|nil
 ---@return SearchResult[]|nil
 local function process_ytdlp_results(results)
@@ -131,6 +129,10 @@ local function process_ytdlp_results(results)
             type            = url_type == 'watch' and 'video' or url_type,
             title           = v.title or '',
             channelTitle    = v.channel or '',
+            url             = url_type == 'watch' and ("%s/watch?v=%s"):format(o.frontend, v.id)
+                              or url_type == 'playlist' and ("%s/playlist?list=%s"):format(o.frontend, v.id)
+                              or url_type == 'channel' and ("%s/channel/%s"):format(o.frontend, v.id)
+                              or ''
         }
 
         table.insert(t, result)
@@ -139,35 +141,48 @@ local function process_ytdlp_results(results)
     return t
 end
 
----@param item SearchResult
-local function insert_video(item)
-    list:insert({
-        ass = ([[%s   {\\c&aaaaaa&}%s]]):format(ass_escape(item.title), ass_escape(item.channelTitle)),
-        url = ("%s/watch?v=%s"):format(o.frontend, item.id)
+---@param index number
+local function play(index)
+    if not index or not latest_search then return end
+
+    mp.commandv("loadfile", latest_search.latest_results[index].url)
+end
+
+local function show_results()
+    if not latest_search then return msg.error('no search results available to display') end
+    selection_open = true
+
+    local t = {'~~ NEW SEARCH ~~'}
+    for _, v in ipairs(latest_search.latest_results) do
+        if v.type == 'video' then
+            table.insert(t, ('%s —\t%s'):format(v.channelTitle, v.title))
+        elseif v.type == 'channel' then
+            table.insert(t, ('~Channel~\t%s'):format(v.title))
+        else
+            table.insert(t, ('~Playlist~\t%s'):format(v.title))
+        end
+    end
+
+    input.select({
+        id = mp.get_script_name()..'/select-results',
+        prompt = ('Results for: %s | Filter: '):format(latest_search.query),
+        items = t,
+        default_item = 1,
+        submit = function(i)
+            -- the first item is the option to do a new search
+            if i == 1 then
+                input.terminate()
+                mp.add_timeout(0.1, open_search_input)
+            else
+                play(i-1)
+            end
+            selection_open = false
+        end
     })
 end
 
----@param item SearchResult
-local function insert_playlist(item)
-    list:insert({
-        ass = ([[{\i1}[playlist]{\i0} %s   {\\c&aaaaaa&}%s]]):format(ass_escape(item.title), ass_escape(item.channelTitle)),
-        url = ("%s/playlist?list=%s"):format(o.frontend, item.id)
-    })
-end
-
----@param item SearchResult
-local function insert_channel(item)
-    list:insert({
-        ass = ([[[{\i1}channel]{\i2} %s]]):format(ass_escape(item.title)),
-        url = ("%s/channel/%s"):format(o.frontend, item.id)
-    })
-end
-
+---@param query string
 local function search(query)
-    list.header = ("%s Search: %s\\N-------------------------------------------------"):format("Youtube", ass_escape(query, true))
-    list.list = {}
-    list.empty_text = "~"
-    list:update()
 
     local results = process_ytdlp_results(search_ytdlp(query))
 
@@ -177,44 +192,37 @@ local function search(query)
         return
     end
 
-    for _, v in ipairs(results) do
-        print(utils.to_string(v))
-        if v.type == 'video' then insert_video(v)
-        elseif v.type == 'playlist' then insert_playlist(v)
-        elseif v.type == 'channel' then insert_channel(v) end
-    end
-
-    list.empty_text = "no results"
-    list:update()
-    list:open()
+    latest_search = {
+        query = query,
+        latest_results = results,
+    }
+    show_results()
 end
 
-local function play_result(flag)
-    if not list[list.selected] then return end
-    if flag == "new_window" then mp.commandv("run", "mpv", list[list.selected].url) ; return end
-
-    mp.commandv("loadfile", list[list.selected].url, flag)
-    if flag == "replace" then list:close() end
-end
-
-table.insert(list.keybinds, {"ENTER", "play", function() play_result("replace") end, {}})
-table.insert(list.keybinds, {"Shift+ENTER", "play_append", function() play_result("append-play") end, {}})
-table.insert(list.keybinds, {"Ctrl+ENTER", "play_new_window", function() play_result("new_window") end, {}})
-
-local function open_search_input()
+---@diagnostic disable-next-line: lowercase-global
+function open_search_input()
     input.get({
-        prompt = 'Youtube Search\n> ',
-        submit = search,
-        history_path = '~~state/youtube_search_history'
+        id = mp.get_script_name()..'/enter-search-query',
+        prompt = 'Youtube Search:\n> ',
+        history_path = '~~state/youtube_search_history',
+        submit = function(line)
+            -- We must add this function to the event queue as the
+            -- 'closed' event (that removes the input handler) is sent at the
+            -- same time as submit. We must give it a chance to run before doing
+            -- the search so that the select prompt can receive input.
+            mp.add_timeout(0.1, function() search(line) end)
+            input.terminate()
+        end
     })
 end
 
-mp.add_key_binding("Ctrl+y", "yt", open_search_input)
+mp.add_key_binding("Ctrl+y", "yt", function()
+    input.terminate()
+    mp.add_timeout(0.1, open_search_input)
+end)
 
 mp.add_key_binding("Y", "youtube-search", function()
-    if not list.hidden then open_search_input()
-    else
-        list:open()
-        if #list.list == 0 then open_search_input() end
-    end
+    if selection_open or latest_search == nil then open_search_input()
+    else show_results() end
 end)
+
