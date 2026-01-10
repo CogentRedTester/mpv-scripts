@@ -1,6 +1,6 @@
 --[[
-    This script automatically saves the current playlist and can reload it if the player is started in idle mode (specifically
-    if there are 0 files in the playlist), or if the correct command is sent via script-messages.
+    This script automatically saves the current playlist and can reload it on startup if the playlist is empty, or if
+    the correct command is sent via script-messages.
     It remembers the playlist position the player was in when shutdown and reloads the playlist at that entry.
     This can be disabled with script-opts
 
@@ -157,13 +157,19 @@ mp.register_script_message('save-session', save_playlist)
 mp.register_script_message('reload-session', load_prev_session)
 mp.register_event('shutdown', shutdown)
 
---Load the previous session if auto_load is enabled and the playlist is empty
---the function is not called until the first property observation is triggered to let everything initialise
---otherwise modifying playlist-start becomes unreliable
-if o.auto_load and (mp.get_property_number('playlist-count', 0) == 0) then
-    local function temp()
-        load_prev_session()
-        mp.unobserve_property(temp)
+--Load the previous session if auto_load is enabled and the playlist is empty.
+--This check is delayed until the playlist-count property is initialized, to allow time for macOS GUI-based
+--file loading or other asynchronous playlist changes.
+--This ensures compatibility with both CLI and GUI startup modes.
+if o.auto_load then
+    local function try_load(name, value)
+        if value == 0 then
+            msg.info("Auto-loading session because playlist is empty.")
+            load_prev_session()
+        else
+            msg.info("Playlist already has content, skipping auto-load.")
+        end
+        mp.unobserve_property(try_load)
     end
-    mp.observe_property("idle", "string", temp)
+    mp.observe_property("playlist-count", "number", try_load)
 end
