@@ -1,5 +1,5 @@
 --[[
-    This script allows users to search and open youtube results from within mpv.
+    This script allows users to search and open youtube results from within mpv using yt-dlp.
     Available at: https://github.com/CogentRedTester/mpv-scripts
 
     Users can open the search page with Y, and use Y again to open a search.
@@ -11,30 +11,10 @@
     scroll-list.lua and user-input-module.lua must be in the ~~/script-modules/ directory,
     while user-input.lua should be loaded by mpv normally.
 
+    yt-dlp must also be available in the system path
+
     https://github.com/CogentRedTester/mpv-scroll-list
     https://github.com/CogentRedTester/mpv-user-input
-
-    This script also requires a youtube API key to be entered.
-    The API key must be passed to the `API_key` script-opt.
-    A personal API key is free and can be created from:
-    https://console.developers.google.com/apis/api/youtube.googleapis.com/
-
-    The script also requires that curl be in the system path.
-
-    An alternative to using the official youtube API is to use Invidious.
-    This script has experimental support for Invidious searches using the 'invidious',
-    'API_path', and 'frontend' options. API_path refers to the url of the API the
-    script uses, Invidious API paths are usually in the form:
-        https://domain.name/api/v1/
-    The frontend option is the url to actualy try to load videos from. This
-    can probably be the same as the above url:
-        https://domain.name
-    Since the url syntax seems to be identical between Youtube and Invidious,
-    it should be possible to mix these options, a.k.a. using the Google
-    API to get videos from an Invidious frontend, or to use an Invidious
-    API to get videos from Youtube.
-    The 'invidious' option tells the script that the API_path is for an
-    Invidious path. This is to support other possible API options in the future.
 ]]--
 
 local mp = require "mp"
@@ -47,33 +27,22 @@ local ui = require "user-input-module"
 local list = require "scroll-list"
 
 local o = {
-    API_key = "",
-
     --number of search results to show in the list
     num_results = 40,
 
     --the url to send API calls to
-    API_path = "https://www.googleapis.com/youtube/v3/",
+    yt_dlp_path = "yt-dlp",
 
-    --attempt this API if the default fails
-    fallback_API_path = "",
+    --The search query to sent to yt-dlp. `%s` is substituted for the search query.
+    search_query = "https://www.youtube.com/search?q=%s",
 
-    --the url to load videos from
     frontend = "https://www.youtube.com",
-
-    --use invidious API calls
-    invidious = false,
-
-    --whether the fallback uses invidious as well
-    fallback_invidious = false
 }
 
 opts.read_options(o)
 
 --ensure the URL options are properly formatted
 local function format_options()
-    if o.API_path:sub(-1) ~= "/" then o.API_path = o.API_path.."/" end
-    if o.fallback_API_path:sub(-1) ~= "/" then o.fallback_API_path = o.fallback_API_path.."/" end
     if o.frontend:sub(-1) == "/" then o.frontend = o.frontend:sub(1, -2) end
 end
 
@@ -96,147 +65,109 @@ local function encode_string(str)
 	return output
 end
 
---convert HTML character codes to the correct characters
-local function html_decode(str)
-    if type(str) ~= "string" then return str end
+---@param str string
+---@return table[]|nil
+local function json_parse_iterate(str)
+    local t = {}
 
-    return str:gsub("&(#?)(%w-);", function(is_ascii, code)
-        if is_ascii == "#" then return string.char(tonumber(code)) end
-        if code == "amp" then return "&" end
-        if code == "quot" then return '"' end
-        if code == "apos" then return "'" end
-        if code == "lt" then return "<" end
-        if code == "gt" then return ">" end
-        return nil
-    end)
+    local json, err, trail = utils.parse_json(str, true)
+    if not json then return nil end
+
+    repeat
+        table.insert(t, json)
+        json, err, trail = utils.parse_json(trail, true)
+    until not json
+
+    return t
 end
 
---creates a formatted results table from an invidious API call
-function format_invidious_results(response)
-    if not response then return nil end
-    local results = {}
-
-    for i, item in ipairs(response) do
-        if i > o.num_results then break end
-
-        local t = {}
-        table.insert(results, t)
-
-        t.title = html_decode(item.title)
-        t.channelTitle = html_decode(item.author)
-        if item.type == "video" then
-            t.type = "video"
-            t.id = item.videoId
-        elseif item.type == "playlist" then
-            t.type = "playlist"
-            t.id = item.playlistId
-        elseif item.type == "channel" then
-            t.type = "channel"
-            t.id = item.authorId
-            t.title = t.channelTitle
-        end
-    end
-
-    return results
-end
-
---creates a formatted results table from a youtube API call
-function format_youtube_results(response)
-    if not response or not response.items then return nil end
-    local results = {}
-
-    for _, item in ipairs(response.items) do
-        local t = {}
-        table.insert(results, t)
-
-        t.title = html_decode(item.snippet.title)
-        t.channelTitle = html_decode(item.snippet.channelTitle)
-
-        if item.id.kind == "youtube#video" then
-            t.type = "video"
-            t.id = item.id.videoId
-        elseif item.id.kind == "youtube#playlist" then
-            t.type = "playlist"
-            t.id = item.id.playlistId
-        elseif item.id.kind == "youtube#channel" then
-            t.type = "channel"
-            t.id = item.id.channelId
-        end
-    end
-
-    return results
-end
-
---sends an API request
-local function send_request(type, queries, API_path)
-    local url = (API_path or o.API_path)..type
-    url = url.."?"
-
-    for key, value in pairs(queries) do
-        msg.verbose(key, value)
-        url = url.."&"..key.."="..encode_string(value)
-    end
-
-    msg.debug(url)
-    local request = mp.command_native({
-        name = "subprocess",
+local function search_ytdlp(query)
+    local req = mp.command_native({
+        name = 'subprocess',
+        playback_only = false,
         capture_stdout = true,
         capture_stderr = true,
-        playback_only = false,
-        args = {"curl", url}
+        args = {o.yt_dlp_path, '-s',  ('-I1:%d'):format(o.num_results), '--flat-playlist', '-j', o.search_query:format(encode_string(query))}
     })
 
-    local response = utils.parse_json(request.stdout)
-    msg.trace(utils.to_string(request))
+    msg.trace(utils.to_string(req))
+    local results = json_parse_iterate(req.stdout)
 
-    if request.status ~= 0 then
-        msg.error(request.stderr)
+    if req.status ~= 0 then
+        msg.error(req.stderr)
         return nil
     end
-    if not response then
+    if not results or #results == 0 then
         msg.error("Could not parse response:")
-        msg.error(request.stdout)
-        return nil
-    end
-    if response.error then
-        msg.error(request.stdout)
+        msg.error(req.stdout)
         return nil
     end
 
-    return response
+    return results
 end
 
---sends a search API request - handles Google/Invidious API differences
-local function search_request(queries, API_path, invidious)
-    list.header = ("%s Search: %s\\N-------------------------------------------------"):format(invidious and "Invidious" or "Youtube", ass_escape(queries.q, true))
+---@class SearchResult
+---@field id string
+---@field type 'video'|'playlist'|'channel'
+---@field title string
+---@field channelTitle string
+
+---@param results table|nil
+---@return SearchResult[]|nil
+local function process_ytdlp_results(results)
+    if not results then return nil end
+
+    ---@type SearchResult[]
+    local t = {}
+
+    for _, v in ipairs(results) do
+        local url_type = string.match(v.url, '^https://www.youtube.com/([^/?]+)')
+
+        ---@type SearchResult
+        local result = {
+            id              = v.id,
+            type            = url_type == 'watch' and 'video' or url_type,
+            title           = v.title or '',
+            channelTitle    = v.channel or '',
+        }
+
+        table.insert(t, result)
+    end
+
+    return t
+end
+
+---@param item SearchResult
+local function insert_video(item)
+    list:insert({
+        ass = ([[%s   {\\c&aaaaaa&}%s]]):format(ass_escape(item.title), ass_escape(item.channelTitle)),
+        url = ("%s/watch?v=%s"):format(o.frontend, item.id)
+    })
+end
+
+---@param item SearchResult
+local function insert_playlist(item)
+    list:insert({
+        ass = ([[{\i1}[playlist]{\i0} %s   {\\c&aaaaaa&}%s]]):format(ass_escape(item.title), ass_escape(item.channelTitle)),
+        url = ("%s/playlist?list=%s"):format(o.frontend, item.id)
+    })
+end
+
+---@param item SearchResult
+local function insert_channel(item)
+    list:insert({
+        ass = ([[[{\i1}channel]{\i2} %s]]):format(ass_escape(item.title)),
+        url = ("%s/channel/%s"):format(o.frontend, item.id)
+    })
+end
+
+local function search(query)
+    list.header = ("%s Search: %s\\N-------------------------------------------------"):format("Youtube", ass_escape(query, true))
     list.list = {}
     list.empty_text = "~"
     list:update()
-    local results = {}
 
-    --we need to modify the returned results so that the rest of the script can read it
-    if invidious then
-
-        --Invidious searches are done with pages rather than a max result number
-        local page = 1
-        while #results < o.num_results do
-            queries.page = page
-
-            local response = send_request("search", queries, API_path)
-            response = format_invidious_results(response)
-            if not response then msg.warn("Search did not return a results list") ; return end
-            if #response == 0 then break end
-
-            for _, item in ipairs(response) do
-                table.insert(results, item)
-            end
-
-            page = page + 1
-        end
-    else
-        local response = send_request("search", queries, API_path)
-        results = format_youtube_results(response)
-    end
+    local results = process_ytdlp_results(search_ytdlp(query))
 
     --print error messages to console if the API request fails
     if not results then
@@ -244,73 +175,14 @@ local function search_request(queries, API_path, invidious)
         return
     end
 
+    for _, v in ipairs(results) do
+        print(utils.to_string(v))
+        if v.type == 'video' then insert_video(v)
+        elseif v.type == 'playlist' then insert_playlist(v)
+        elseif v.type == 'channel' then insert_channel(v) end
+    end
+
     list.empty_text = "no results"
-    return results
-end
-
-local function insert_video(item)
-    list:insert({
-        ass = ("%s   {\\c&aaaaaa&}%s"):format(ass_escape(item.title), ass_escape(item.channelTitle)),
-        url = ("%s/watch?v=%s"):format(o.frontend, item.id)
-    })
-end
-
-local function insert_playlist(item)
-    list:insert({
-        ass = ("🖿 %s   {\\c&aaaaaa&}%s"):format(ass_escape(item.title), ass_escape(item.channelTitle)),
-        url = ("%s/playlist?list=%s"):format(o.frontend, item.id)
-    })
-end
-
-local function insert_channel(item)
-    list:insert({
-        ass = ("👤 %s"):format(ass_escape(item.title)),
-        url = ("%s/channel/%s"):format(o.frontend, item.id)
-    })
-end
-
-local function reset_list()
-    list.selected = 1
-    list:clear()
-end
-
---creates the search request queries depending on what API we're using
-local function get_search_queries(query, invidious)
-    if invidious then
-        return {
-            q = query,
-            type = "all",
-            page = 1
-        }
-    else
-        return {
-            key = o.API_key,
-            q = query,
-            part = "id,snippet",
-            maxResults = o.num_results
-        }
-    end
-end
-
-local function search(query)
-    local response = search_request(get_search_queries(query, o.invidious), o.API_path, o.invidious)
-    if not response and o.fallback_API_path ~= "/" then
-        msg.info("search failed - attempting fallback")
-        response = search_request(get_search_queries(query, o.fallback_invidious), o.fallback_API_path, o.fallback_invidious)
-    end
-
-    if not response then return end
-    reset_list()
-
-    for _, item in ipairs(response) do
-        if item.type == "video" then
-            insert_video(item)
-        elseif item.type == "playlist" then
-            insert_playlist(item)
-        elseif item.type == "channel" then
-            insert_channel(item)
-        end
-    end
     list:update()
     list:open()
 end
