@@ -7,36 +7,38 @@
     Esc can be used to close the page.
     Enter will open the selected item, Shift+Enter will append the item to the playlist.
 
-    This script requires that my other scripts `scroll-list` and `user-input` be installed.
+    This script requires that my other scripts `scroll-list` be installed.
     scroll-list.lua and user-input-module.lua must be in the ~~/script-modules/ directory,
     while user-input.lua should be loaded by mpv normally.
 
     yt-dlp must also be available in the system path
 
     https://github.com/CogentRedTester/mpv-scroll-list
-    https://github.com/CogentRedTester/mpv-user-input
 ]]--
 
 local mp = require "mp"
 local msg = require "mp.msg"
 local utils = require "mp.utils"
 local opts = require "mp.options"
+local input = require 'mp.input'
 
 package.path = mp.command_native({"expand-path", "~~/script-modules/?.lua;"}) .. package.path
-local ui = require "user-input-module"
 local list = require "scroll-list"
 
 local o = {
-    --number of search results to show in the list
+    --Number of search results to show in the list.
     num_results = 40,
 
-    --the url to send API calls to
+    --The url to send API calls to.
     yt_dlp_path = "yt-dlp",
 
     --The search query to sent to yt-dlp. `%s` is substituted for the search query.
     search_query = "https://www.youtube.com/search?q=%s",
 
     frontend = "https://www.youtube.com",
+
+    --Save search history between mpv sessions.
+    save_search_history = true,
 }
 
 opts.read_options(o)
@@ -200,10 +202,11 @@ table.insert(list.keybinds, {"Shift+ENTER", "play_append", function() play_resul
 table.insert(list.keybinds, {"Ctrl+ENTER", "play_new_window", function() play_result("new_window") end, {}})
 
 local function open_search_input()
-    ui.get_user_input(function(input)
-        if not input then return end
-        search( input )
-    end, { request_text = "Enter Query:" })
+    input.get({
+        prompt = 'Youtube Search\n> ',
+        submit = search,
+        history_path = '~~state/youtube_search_history'
+    })
 end
 
 mp.add_key_binding("Ctrl+y", "yt", open_search_input)
