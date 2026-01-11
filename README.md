@@ -162,7 +162,5 @@ This script allows users to set custom variables which can be used in commands a
 
 ## youtube-search
 
-A script that allows users to search and open youtube results from within mpv.
-Requires [scroll-list](#scroll-list), [user-input](#user-input), curl, and a youtube API key.
-Alternatively, an Invidious frontend can be used for searches without requiring an API key.
-See the file header for details.
+A script that allows users to search and open youtube results from within mpv with the `Y` key.
+Requires `yt-dlp`.
