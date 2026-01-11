@@ -52,6 +52,7 @@ format_options()
 ---@class LatestSearch
 ---@field latest_results SearchResult[]
 ---@field query string
+---@field display_list string[]
 
 ---@type LatestSearch|nil
 local latest_search = nil
@@ -141,49 +142,98 @@ local function process_ytdlp_results(results)
     return t
 end
 
----@param index number
-local function play(index)
-    if not index or not latest_search then return end
+---@alias PlayFlag 'play'|'append'|'new-window'
 
-    mp.commandv("loadfile", latest_search.latest_results[index].url)
+---@param index number
+---@param flag PlayFlag
+local function play(index, flag)
+    if not index or not latest_search then return end
+    local item = latest_search.latest_results[index]
+
+    if flag == 'new-window' then
+        mp.commandv('run', 'mpv', item.url)
+    elseif flag == 'append' then
+        mp.command_native({"loadfile", item.url, 'append-play'})
+    else
+        mp.command_native({"loadfile", item.url})
+    end
 end
+
+---@type [string,string,PlayFlag][]
+local custom_select_keybinds = {
+    {'Shift+Enter', 'select/append', 'append'},
+    {'Shift+MBTN_LEFT', 'select/append/mbtn', 'append'},
+    {'Ctrl+Enter', 'select/new-window', 'new-window'},
+    {'Ctrl+MBTN_LEFT', 'select/new-window/mbtn', 'new-window'},
+}
 
 local function show_results()
     if not latest_search then return msg.error('no search results available to display') end
     selection_open = true
 
-    local t = {'~~ NEW SEARCH ~~'}
-    for _, v in ipairs(latest_search.latest_results) do
-        if v.type == 'video' then
-            table.insert(t, ('%s —\t%s'):format(v.channelTitle, v.title))
-        elseif v.type == 'channel' then
-            table.insert(t, ('~Channel~\t%s'):format(v.title))
-        else
-            table.insert(t, ('~Playlist~\t%s'):format(v.title))
-        end
-    end
+    local items = {'~~ NEW SEARCH ~~', unpack(latest_search.display_list)}
+    ---@type PlayFlag
+    local flag = 'play'
 
     input.select({
         id = mp.get_script_name()..'/select-results',
         prompt = ('Results for: %s | Filter: '):format(latest_search.query),
-        items = t,
+        items = items,
         default_item = 1,
+        keep_open = true,
+        opened = function()
+            msg.debug('Select prompt opened - adding keybinds')
+
+            for _, keybind in ipairs(custom_select_keybinds) do
+                mp.add_forced_key_binding(keybind[1], keybind[2], function()
+                    flag = keybind[3]
+                    mp.commandv('keypress', 'enter')
+                end)
+
+                -- This is necessary because of a race condition that sometimes
+                -- causes the console keybinds to take precedence over ours
+                -- despite us declaring ours after.
+                if keybind[1]:find('Shift') then
+                    mp.add_timeout(0.5, function()
+                        mp.add_forced_key_binding(keybind[1], keybind[2], function()
+                            flag = keybind[3]
+                            mp.commandv('keypress', 'enter')
+                        end)
+                    end)
+                end
+            end
+        end,
+        closed = function()
+            msg.debug('selection closed - removing keybinds')
+            for _, keybind in ipairs(custom_select_keybinds) do
+                mp.remove_key_binding(keybind[2])
+            end
+            mp.remove_key_binding('_console_text')
+        end,
         submit = function(i)
             -- the first item is the option to do a new search
             if i == 1 then
                 input.terminate()
                 mp.add_timeout(0.1, open_search_input)
             else
-                play(i-1)
+                play(i-1, flag)
             end
-            selection_open = false
-        end
+
+            if flag == 'play' then
+                input.terminate()
+                selection_open = false
+            else
+                flag = 'play'
+            end
+        end,
     })
 end
 
 ---@param query string
 local function search(query)
 
+    ---@type string[]
+    local display_list = {}
     local results = process_ytdlp_results(search_ytdlp(query))
 
     --print error messages to console if the API request fails
@@ -192,9 +242,20 @@ local function search(query)
         return
     end
 
+    for _, v in ipairs(results) do
+        if v.type == 'video' then
+            table.insert(display_list, ('%s —\t%s'):format(v.channelTitle, v.title))
+        elseif v.type == 'channel' then
+            table.insert(display_list, ('~Channel~\t%s'):format(v.title))
+        else
+            table.insert(display_list, ('~Playlist~\t%s'):format(v.title))
+        end
+    end
+
     latest_search = {
         query = query,
         latest_results = results,
+        display_list = display_list
     }
     show_results()
 end
@@ -210,7 +271,10 @@ function open_search_input()
             -- 'closed' event (that removes the input handler) is sent at the
             -- same time as submit. We must give it a chance to run before doing
             -- the search so that the select prompt can receive input.
+            -- We are not using keep-open as there is still a delay
+            -- before the search completes and we don't want the input to remain open.
             mp.add_timeout(0.1, function() search(line) end)
+            mp.osd_message(('Searching Youtube for "%s"'):format(line))
             input.terminate()
         end
     })
